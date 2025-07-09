@@ -1,6 +1,8 @@
 package gateway
 
-import "github.com/jnunes-ds/walletcore-fc/internal/entity"
+import (
+	"github.com/jnunes-ds/walletcore-fc/internal/entity"
+)
 
 type AccountGateway interface {
 	Save(account *entity.Account) error
