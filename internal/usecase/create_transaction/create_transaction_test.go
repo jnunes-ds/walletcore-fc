@@ -2,6 +2,8 @@ package createtransaction
 
 import (
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
+	"github.com/jnunes-ds/walletcore-fc/internal/event"
+	"github.com/jnunes-ds/walletcore-fc/pkg/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -52,7 +54,10 @@ func TestCreateTransactionUseCase_Execute(t *testing.T) {
 		Amount:        100.0,
 	}
 
-	uc := NewCreateTransactionUseCase(mockTransaction, mockAccount)
+	dispatcher := events.NewEventDispatcher()
+	event := event.NewTransactionCreated()
+
+	uc := NewCreateTransactionUseCase(mockTransaction, mockAccount, dispatcher, event)
 	output, err := uc.Execute(inputDTO)
 	assert.Nil(t, err)
 	assert.NotNil(t, output)
