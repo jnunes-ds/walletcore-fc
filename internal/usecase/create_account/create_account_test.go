@@ -1,4 +1,4 @@
-package createaccount
+package create_account
 
 import (
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
