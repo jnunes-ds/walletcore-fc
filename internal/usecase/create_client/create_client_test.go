@@ -1,4 +1,4 @@
-package createclient
+package create_client
 
 import (
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
