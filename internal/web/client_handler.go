@@ -17,6 +17,7 @@ func NewWebClientHandler(createClientUseCase create_client.CreateClientUsecase) 
 }
 
 func (wch *WebClientHandler) CreateClient(res http.ResponseWriter, req *http.Request) {
+
 	var input create_client.CreateClientInputDTO
 	if err := json.NewDecoder(req.Body).Decode(&input); err != nil {
 		res.WriteHeader(http.StatusBadRequest)

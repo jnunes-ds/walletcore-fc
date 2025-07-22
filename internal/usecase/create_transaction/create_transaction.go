@@ -7,13 +7,13 @@ import (
 )
 
 type CreateTransactionInputDTO struct {
-	AccountIdFrom string
-	AccountIdTo   string
-	Amount        float64
+	AccountIdFrom string  `json:"account_id_from"`
+	AccountIdTo   string  `json:"account_id_to"`
+	Amount        float64 `json:"amount"`
 }
 
 type CreateTransactionOutputDTO struct {
-	ID string
+	ID string `json:"id"`
 }
 
 type CreateTransactionUseCase struct {
