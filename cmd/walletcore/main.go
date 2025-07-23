@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"github.com/jnunes-ds/walletcore-fc/internal/database"
@@ -11,6 +12,7 @@ import (
 	"github.com/jnunes-ds/walletcore-fc/internal/web"
 	webserver "github.com/jnunes-ds/walletcore-fc/internal/web/webserver"
 	"github.com/jnunes-ds/walletcore-fc/pkg/events"
+	uow "github.com/jnunes-ds/walletcore-fc/pkg/uow"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -29,11 +31,21 @@ func main() {
 
 	clientDb := database.NewClientDB(db)
 	accountDb := database.NewAccountDB(db)
-	transactionDb := database.NewTransactionDB(db)
+
+	ctx := context.Background()
+	uow := uow.NewUow(ctx, db)
+
+	uow.Register("AccountDB", func(tx *sql.Tx) interface{} {
+		return database.NewAccountDB(db)
+	})
+
+	uow.Register("TransactionDB", func(tx *sql.Tx) interface{} {
+		return database.NewTransactionDB(db)
+	})
 
 	createClientUseCase := create_client.NewCreateClientUsecase(clientDb)
 	createAccountUseCase := create_account.NewCreateAccountUseCase(accountDb, clientDb)
-	createTransactionUseCase := create_transaction.NewCreateTransactionUseCase(transactionDb, accountDb, eventDispatcher, transactionCreatedEvent)
+	createTransactionUseCase := create_transaction.NewCreateTransactionUseCase(uow, eventDispatcher, transactionCreatedEvent)
 
 	webserver := webserver.NewWebServer(":3000")
 
