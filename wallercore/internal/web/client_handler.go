@@ -31,10 +31,6 @@ func (wch *WebClientHandler) CreateClient(res http.ResponseWriter, req *http.Req
 	}
 
 	res.Header().Set("Content-Type", "application/json")
-	if err = json.NewEncoder(res).Encode(output); err != nil {
-		res.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
 	res.WriteHeader(http.StatusCreated)
+	json.NewEncoder(res).Encode(output)
 }

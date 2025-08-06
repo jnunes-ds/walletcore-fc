@@ -1,6 +1,9 @@
 package events
 
-import "errors"
+import (
+	"errors"
+	"sync"
+)
 
 var ErrHandlerAlreadyRegistered = errors.New("handler already registered")
 var ErrNoHandlersRegistered = errors.New("no handlers registered for event")
@@ -17,9 +20,16 @@ func NewEventDispatcher() *EventDispatcher {
 
 func (ed *EventDispatcher) Dispatch(event EventInterface) error {
 	if handlers, ok := ed.handlers[event.GetName()]; ok {
+		// Cria um WaitGroup para sincronizar as goroutines.
+		var wg sync.WaitGroup
 		for _, handler := range handlers {
-			handler.Handle(event)
+			// Adiciona 1 ao contador do WaitGroup para cada handler.
+			wg.Add(1)
+			// Dispara cada handler em uma goroutine separada, passando o WaitGroup.
+			go handler.Handle(event, &wg)
 		}
+		// Espera todas as goroutines chamarem wg.Done().
+		wg.Wait()
 		return nil
 	}
 	return ErrNoHandlersRegistered
