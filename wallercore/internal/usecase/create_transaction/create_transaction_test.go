@@ -1,7 +1,11 @@
-package createtransaction
+package create_transaction
 
 import (
+	"context"
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
+	"github.com/jnunes-ds/walletcore-fc/internal/event"
+	"github.com/jnunes-ds/walletcore-fc/internal/usecase/mocks"
+	"github.com/jnunes-ds/walletcore-fc/pkg/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -39,12 +43,8 @@ func TestCreateTransactionUseCase_Execute(t *testing.T) {
 	account2 := entity.NewAccount(client2)
 	account2.Credit(1000.0)
 
-	mockAccount := &AccountGatewayMock{}
-	mockAccount.On("FindById", account1.ID).Return(account1, nil)
-	mockAccount.On("FindById", account2.ID).Return(account2, nil)
-
-	mockTransaction := &TransactionGatewayMock{}
-	mockTransaction.On("Create", mock.Anything).Return(nil)
+	mockUow := &mocks.UowMock{}
+	mockUow.On("Do", mock.Anything, mock.Anything).Return(nil)
 
 	inputDTO := CreateTransactionInputDTO{
 		AccountIdFrom: account1.ID,
@@ -52,12 +52,15 @@ func TestCreateTransactionUseCase_Execute(t *testing.T) {
 		Amount:        100.0,
 	}
 
-	uc := NewCreateTransactionUseCase(mockTransaction, mockAccount)
-	output, err := uc.Execute(inputDTO)
+	dispatcher := events.NewEventDispatcher()
+	eventTransaction := event.NewTransactionCreated()
+	eventBalance := event.NewBalanceUpdated()
+	ctx := context.Background()
+
+	uc := NewCreateTransactionUseCase(mockUow, dispatcher, eventTransaction, eventBalance)
+	output, err := uc.Execute(ctx, inputDTO)
 	assert.Nil(t, err)
 	assert.NotNil(t, output)
-	mockAccount.AssertExpectations(t)
-	mockTransaction.AssertExpectations(t)
-	mockAccount.AssertNumberOfCalls(t, "FindById", 2)
-	mockTransaction.AssertNumberOfCalls(t, "Create", 1)
+	mockUow.AssertExpectations(t)
+	mockUow.AssertNumberOfCalls(t, "Do", 1)
 }

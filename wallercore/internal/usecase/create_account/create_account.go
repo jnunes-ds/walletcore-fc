@@ -1,4 +1,4 @@
-package createaccount
+package create_account
 
 import (
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
@@ -6,7 +6,7 @@ import (
 )
 
 type CreateAccountInputDTO struct {
-	ClientId string
+	ClientId string `json:"client_id"`
 }
 
 type CreateAccountOutputDTO struct {
