@@ -1,1 +1,43 @@
-.idea/
+# Existing content of your root .gitignore
+# ...
+
+
+### NestJS Project (ecommerce) ###
+
+# compiled output
+/ecommerce/dist
+/ecommerce/node_modules
+/ecommerce/build
+
+# Logs
+/ecommerce/logs
+/ecommerce/*.log
+/ecommerce/npm-debug.log*
+/ecommerce/pnpm-debug.log*
+/ecommerce/yarn-debug.log*
+/ecommerce/yarn-error.log*
+/ecommerce/lerna-debug.log*
+
+# Tests
+/ecommerce/coverage
+/ecommerce/.nyc_output
+
+# dotenv environment variable files
+/ecommerce/.env
+/ecommerce/.env.development.local
+/ecommerce/.env.test.local
+/ecommerce/.env.production.local
+/ecommerce/.env.local
+
+# temp directory
+/ecommerce/.temp
+/ecommerce/.tmp
+
+# Runtime data
+/ecommerce/pids
+/ecommerce/*.pid
+/ecommerce/*.seed
+/ecommerce/*.pid.lock
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+/ecommerce/report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
