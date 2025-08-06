@@ -2,12 +2,26 @@ version: '3'
 
 services:
   goapp:
-    build: .
+    build: ./walletcore
     platform: linux/amd64
     volumes:
-      - .:/app
+      - ./walletcore:/app
     ports:
         - 8080:8080
+
+  nestjs-app:
+    build:
+      context: ./nestjs-app
+      dockerfile: Dockerfile
+    container_name: nestjs-app
+    ports:
+      - "3001:3000" # Expondo na porta 3001 para não conflitar com outras aplicações
+    volumes:
+      - ./nestjs-app:/usr/src/app
+      - /usr/src/app/node_modules # Garante que o node_modules de dentro do container não seja sobrescrito
+    command: npm run start:dev
+    depends_on:
+      - mysql # Exemplo, se o NestJS precisar do banco
 
   mysql:
     image: mysql:5.7
