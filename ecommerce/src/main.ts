@@ -11,7 +11,10 @@ import { ConfigService } from '@nestjs/config';
 function runPrismaMigrations() {
 	console.log('Checking and applying Prisma migrations...');
 	try {
+		// `prisma migrate deploy` é o comando ideal para ambientes de produção/staging.
+		// Ele não gera novos arquivos de migração, apenas aplica os existentes.
 		execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+		execSync('npx prisma db seed', { stdio: 'inherit' });
 		console.log('Prisma migrations applied successfully.');
 	} catch (error) {
 		console.error('Failed to apply Prisma migrations:', error);
