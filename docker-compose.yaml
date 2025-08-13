@@ -9,15 +9,15 @@ services:
     ports:
         - 8080:8080
 
-  nestjs-app:
+  ecommerce:
     build:
-      context: ./nestjs-app
+      context: ./ecommerce
       dockerfile: Dockerfile
-    container_name: nestjs-app
+    container_name: ecommerce
     ports:
       - "3001:3000" # Expondo na porta 3001 para não conflitar com outras aplicações
     volumes:
-      - ./nestjs-app:/usr/src/app
+      - ./ecommerce:/usr/src/app
       - /usr/src/app/node_modules # Garante que o node_modules de dentro do container não seja sobrescrito
     command: npm run start:dev
     depends_on:
