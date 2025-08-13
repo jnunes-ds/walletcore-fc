@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   goapp:
     build: ./walletcore
@@ -7,33 +5,36 @@ services:
     volumes:
       - ./walletcore:/app
     ports:
-        - 8080:8080
+      - 8080:8080
 
   nestjs-app:
     build:
-      context: ./nestjs-app
+      context: ./ecommerce
       dockerfile: Dockerfile
     container_name: nestjs-app
     ports:
-      - "3001:3000" # Expondo na porta 3001 para não conflitar com outras aplicações
+      - "3001:3000"
     volumes:
-      - ./nestjs-app:/usr/src/app
-      - /usr/src/app/node_modules # Garante que o node_modules de dentro do container não seja sobrescrito
+      - ./ecommerce:/usr/src/app
+      - /usr/src/app/node_modules
     command: npm run start:dev
+    environment:
+      - DATABASE_URL=mysql://root:root@mysql:3306/ecommerce
+      - PORT=3000
     depends_on:
-      - mysql # Exemplo, se o NestJS precisar do banco
+      - mysql
 
   mysql:
     image: mysql:5.7
     platform: linux/amd64
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: wallet
-      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: 'root'
+      MYSQL_DATABASE: 'ecommerce'
+      MYSQL_PASSWORD: 'root'
     ports:
-      - 3306:3306
+      - "3307:3306" # Alterado para evitar conflito de porta
     volumes:
-      - .docker/mysql:/var/lib.mysql
+      - ./.docker/mysql:/var/lib/mysql
 
   zookeeper:
     image: "confluentinc/cp-zookeeper:6.1.0"
