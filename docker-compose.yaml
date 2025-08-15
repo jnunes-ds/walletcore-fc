@@ -28,13 +28,13 @@ services:
     image: mysql:5.7
     platform: linux/amd64
     environment:
-      MYSQL_ROOT_PASSWORD: 'root'
-      MYSQL_DATABASE: 'ecommerce'
-      MYSQL_PASSWORD: 'root'
+      MYSQL_ROOT_PASSWORD: "root"
+      MYSQL_PASSWORD: "root"
     ports:
       - "3307:3306" # Alterado para evitar conflito de porta
     volumes:
       - ./.docker/mysql:/var/lib/mysql
+      - ./.docker/mysql/initdb:/docker-entrypoint-initdb.d
 
   zookeeper:
     image: "confluentinc/cp-zookeeper:6.1.0"

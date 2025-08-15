@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
 	ckafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jnunes-ds/walletcore-fc/internal/database"
@@ -71,4 +72,6 @@ func main() {
 
 	fmt.Println("Server is running")
 	webserver.Start()
+	// Adicione um select vazio para bloquear a goroutine principal e manter a aplicação rodando.
+	select {}
 }
