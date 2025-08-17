@@ -1,11 +1,14 @@
 # Existing content of your root .gitignore
 # ...
-
+.docker
+.idea
 
 ### NestJS Project (ecommerce) ###
 
 # compiled output
 /ecommerce/dist
+/ecommerce/generated
+ecommerce/prisma/migrations
 /ecommerce/node_modules
 /ecommerce/build
 
