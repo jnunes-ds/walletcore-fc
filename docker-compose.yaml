@@ -6,6 +6,10 @@ services:
       - ./walletcore:/app
     ports:
       - 8080:8080
+    environment:
+      - DATABASE_URL=mysql://root:root@mysql:3306/wallet
+    depends_on:
+      - mysql
 
   nestjs-app:
     build:
@@ -33,8 +37,8 @@ services:
     ports:
       - "3307:3306" # Alterado para evitar conflito de porta
     volumes:
-      - ./.docker/mysql:/var/lib/mysql
-      - ./.docker/mysql/initdb:/docker-entrypoint-initdb.d
+      - ./.docker/mysql/data:/var/lib/mysql
+      - ./db_init:/docker-entrypoint-initdb.d
 
   zookeeper:
     image: "confluentinc/cp-zookeeper:6.1.0"

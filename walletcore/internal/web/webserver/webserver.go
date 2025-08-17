@@ -24,10 +24,10 @@ func (ws *WebServer) AddHandler(path string, handler http.HandlerFunc) {
 	ws.Handlers[path] = handler
 }
 
-func (ws *WebServer) Start() {
+func (ws *WebServer) Start() error {
 	ws.Router.Use(middleware.Logger)
 	for path, handler := range ws.Handlers {
 		ws.Router.Post(path, handler)
 	}
-	http.ListenAndServe(ws.WebServerPort, ws.Router)
+	return http.ListenAndServe(ws.WebServerPort, ws.Router)
 }
