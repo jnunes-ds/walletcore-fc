@@ -18,7 +18,7 @@ model User {
 }
 
 model Product {
-  id          Int        @id @default(autoincrement())
+  id          String     @id
   name        String
   price       Float
   description String?
@@ -30,7 +30,7 @@ model Product {
 }
 
 model Purchase {
-  id       Int       @id @default(autoincrement())
+  id       String    @id
   buyerId  String
   buyer    User      @relation("BuyerPurchases", fields: [buyerId], references: [id], onDelete: Restrict)
   sellerId String
