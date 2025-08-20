@@ -1,4 +1,5 @@
-import Entity from "../../@shared/entity/entity.abstract";
+import Entity from '../../@shared/entity/entity.abstract';
+import { v4 as uuidv4 } from 'uuid';
 
 export default class User extends Entity {
 	private _name: string;
@@ -6,12 +7,13 @@ export default class User extends Entity {
 	private _isSeller: boolean;
 	private _products: string[];
 
-	constructor(id: string, name: string, email: string, isSeller: boolean) {
+	constructor(name: string, email: string) {
 		super();
-		this._id = id ?? Math.random().toString();
+		this._id = uuidv4();
 		this._name = name;
 		this._email = email;
-		this._isSeller = isSeller;
+		this._isSeller = false;
+		this._products = [];
 	}
 
 	get name(): string {
@@ -43,6 +45,8 @@ export default class User extends Entity {
 
 	getProductById(productId: string) {
 		if (!this._products.length) throw new Error('User has no products');
-		const currentProduct = this._products.map(product => product === productId);
+		const currentProduct = this._products.map(
+			(product) => product === productId,
+		);
 	}
 }

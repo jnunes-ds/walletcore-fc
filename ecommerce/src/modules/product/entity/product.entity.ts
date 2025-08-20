@@ -1,21 +1,25 @@
-// Crie uma entidade produto
-import Entity from "../../@shared/entity/entity.abstract";
+import Entity from '../../@shared/entity/entity.abstract';
+import { v4 as uuidv4 } from 'uuid';
 
 export default class Product extends Entity {
 	private _name: string;
 	private _description: string;
 	private _price: number;
-	private _userId: string;
+	private _sellerId: string;
 
-	constructor(id: string, name: string, description: string, price: number, userId: string) {
+	constructor(
+		name: string,
+		description: string,
+		price: number,
+		userId: string,
+	) {
 		super();
-		this._id = id ?? Math.random().toString();
+		this._id = uuidv4();
 		this._name = name;
 		this._description = description;
 
-
 		this._price = price;
-		this._userId = userId;
+		this._sellerId = userId;
 	}
 
 	get name(): string {
@@ -30,8 +34,8 @@ export default class Product extends Entity {
 		return this._price;
 	}
 
-	get userId(): string {
-		return this._userId;
+	get sellerId(): string {
+		return this._sellerId;
 	}
 
 	changeName(name: string) {

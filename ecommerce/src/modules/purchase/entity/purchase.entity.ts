@@ -1,5 +1,4 @@
-// crie uma entidade purchase que levará em conta o id do usuário comprador e do vendedor
-import Entity from "../../@shared/entity/entity.abstract";
+import Entity from '../../@shared/entity/entity.abstract';
 
 export default class Purchase extends Entity {
 	private _buyerId: string;
@@ -8,14 +7,20 @@ export default class Purchase extends Entity {
 	private _price: number;
 	private _purchaseDate: Date;
 
-	constructor(id: string, buyerId: string, sellerId: string, productId: string, price: number, purchaseDate: Date) {
+	constructor(
+		id: string | null,
+		buyerId: string,
+		sellerId: string,
+		productId: string,
+		price: number,
+	) {
 		super();
 		this._id = id ?? Math.random().toString();
 		this._buyerId = buyerId;
 		this._sellerId = sellerId;
 		this._productId = productId;
 		this._price = price;
-		this._purchaseDate = purchaseDate;
+		this._purchaseDate = new Date();
 	}
 
 	get buyerId(): string {
@@ -38,4 +43,3 @@ export default class Purchase extends Entity {
 		return this._purchaseDate;
 	}
 }
-

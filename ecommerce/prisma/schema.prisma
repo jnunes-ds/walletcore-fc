@@ -8,21 +8,21 @@ datasource db {
 }
 
 model User {
-  id        Int        @id @default(autoincrement())
+  id        String     @id @unique
   name      String
   email     String     @unique
-  password  String
+  isSeller  Boolean    @default(false)
   products  Product[]  @relation("SellerProducts")
   purchases Purchase[] @relation("BuyerPurchases")
   sales     Purchase[] @relation("SellerSales")
 }
 
 model Product {
-  id          Int        @id @default(autoincrement())
+  id          String     @id
   name        String
   price       Float
   description String?
-  sellerId    Int
+  sellerId    String
   seller      User       @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
   purchases   Purchase[]
 
@@ -30,13 +30,17 @@ model Product {
 }
 
 model Purchase {
-  id       Int       @id @default(autoincrement())
-  buyerId  Int
+  id       String    @id
+  buyerId  String
   buyer    User      @relation("BuyerPurchases", fields: [buyerId], references: [id], onDelete: Restrict)
-  sellerId Int
+  sellerId String
   seller   User      @relation("SellerSales", fields: [sellerId], references: [id], onDelete: Restrict)
-  products Product[]
+  productId String
+  product   Product   @relation(fields: [productId], references: [id])
+  price     Float
+  createdAt DateTime  @default(now())
 
   @@index([buyerId])
   @@index([sellerId])
+  @@index([productId])
 }
