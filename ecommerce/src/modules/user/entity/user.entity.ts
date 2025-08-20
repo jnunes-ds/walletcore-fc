@@ -1,4 +1,4 @@
-import Entity from '../../@shared/entity/entity.abstract';
+import Entity from '@shared/entity/entity.abstract';
 import { v4 as uuidv4 } from 'uuid';
 
 export default class User extends Entity {
@@ -48,5 +48,7 @@ export default class User extends Entity {
 		const currentProduct = this._products.map(
 			(product) => product === productId,
 		);
+		if (!currentProduct) throw new Error('User has no products');
+		return currentProduct;
 	}
 }

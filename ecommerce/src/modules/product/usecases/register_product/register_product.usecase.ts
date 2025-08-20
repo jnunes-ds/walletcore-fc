@@ -1,16 +1,16 @@
-import UseCaseInterface from '../../../@shared/usecase/usecase.interface';
+import UseCaseInterface from '@shared/usecase/usecase.interface';
 import {
 	IRegisterProductUsecaseInputDTO,
 	IRegisterProductUsecaseOutputDTO,
 } from './register_product.usecase.dto';
-import { PrismaService } from '../../../../database/prisma.service';
 import Product from '../../entity/product.entity';
-import { Result, failure, success } from '../../../@shared/result/result';
+import { Result, failure, success } from '@shared/result/result';
 import {
+	ConflictError,
 	DomainError,
 	NotFoundError,
-	ConflictError,
-} from '../../../@shared/errors/domain_errors';
+} from '@shared/errors/domain_errors';
+import { PrismaService } from '@database/prisma.service';
 
 export class RegisterProductUsecase
 	implements

@@ -1,15 +1,12 @@
-import { PrismaService } from '../../../../database/prisma.service';
-import User from '../../entity/user.entity';
 import {
 	ICreateUserInputDTO,
 	ICreateUserOtuputDTO,
 } from './create_user.usecase.dto';
-import UseCaseInterface from '../../../@shared/usecase/usecase.interface';
-import { Result, failure, success } from '../../../@shared/result/result';
-import {
-	ConflictError,
-	DomainError,
-} from '../../../@shared/errors/domain_errors';
+import { PrismaService } from '@database/prisma.service';
+import User from '@modules/user/entity/user.entity';
+import UseCaseInterface from '@shared/usecase/usecase.interface';
+import { failure, Result, success } from '@shared/result/result';
+import { ConflictError, DomainError } from '@shared/errors/domain_errors';
 
 export class CreateUserUsecase
 	implements

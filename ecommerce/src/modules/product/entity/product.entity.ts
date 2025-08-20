@@ -1,4 +1,4 @@
-import Entity from '../../@shared/entity/entity.abstract';
+import Entity from '@shared/entity/entity.abstract';
 import { v4 as uuidv4 } from 'uuid';
 
 export default class Product extends Entity {

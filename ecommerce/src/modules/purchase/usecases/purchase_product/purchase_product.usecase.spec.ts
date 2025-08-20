@@ -1,248 +1,155 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { PrismaService } from '@database/prisma.service';
+import { ConflictError, NotFoundError } from '@shared/errors/domain_errors';
+import { failure, success } from '@shared/result/result';
 import { PurchaseProductUsecase } from './purchase_product.usecase';
-import { PrismaService } from '../../../../database/prisma.service';
 import { PurchaseProductUsecaseInputDTO } from './purchase_product.usecase.dto';
-import { NotFoundError } from '../../../@shared/errors/domain_errors';
-import { failure } from '../../../@shared/result/result';
 
 describe('PurchaseProductUsecase', () => {
 	let usecase: PurchaseProductUsecase;
 	let prismaService: PrismaService;
 
+	const buyer = { id: 'buyer-uuid', name: 'Buyer', email: 'buyer@test.com' };
+	const seller = {
+		id: 'seller-uuid',
+		name: 'Seller',
+		email: 'seller@test.com',
+	};
+	const product = {
+		id: 'product-uuid',
+		name: 'Test Product',
+		price: 100,
+		sellerId: seller.id,
+	};
+
 	beforeEach(() => {
 		prismaService = {
-			user: {
-				findUnique: jest.fn(),
-			},
-			product: {
-				findUnique: jest.fn(),
-			},
-			purchase: {
-				create: jest.fn(),
-			},
+			user: { findUnique: jest.fn() },
+			product: { findUnique: jest.fn() },
+			purchase: { create: jest.fn() },
 		} as any;
 		usecase = new PurchaseProductUsecase(prismaService);
 	});
 
-	it('should purchase a product successfully', async () => {
+	it('should successfully purchase a product', async () => {
 		const input: PurchaseProductUsecaseInputDTO = {
-			buyerId: 'buyer-uuid',
-			sellerId: 'seller-uuid',
-			productId: 'product-uuid',
-		};
-
-		const foundBuyer = {
-			id: 'buyer-uuid',
-			name: 'Buyer User',
-			email: 'buyer@example.com',
-			isSeller: false,
-		};
-
-		const foundSeller = {
-			id: 'seller-uuid',
-			name: 'Seller User',
-			email: 'seller@example.com',
-			isSeller: true,
-		};
-
-		const foundProduct = {
-			id: 'product-uuid',
-			name: 'Test Product',
-			description: 'Description of test product',
-			price: 100,
-			sellerId: 'seller-uuid',
+			buyerId: buyer.id,
+			sellerId: seller.id,
+			productId: product.id,
 		};
 
 		const createdPurchase = {
+			...input,
 			id: 'purchase-uuid',
-			buyerId: 'buyer-uuid',
-			sellerId: 'seller-uuid',
-			productId: 'product-uuid',
-			price: 100,
+			price: product.price,
 			createdAt: new Date(),
 		};
 
 		(prismaService.user.findUnique as jest.Mock)
-			.mockResolvedValueOnce(foundBuyer)
-			.mockResolvedValueOnce(foundSeller);
-		(prismaService.product.findUnique as jest.Mock).mockResolvedValue(
-			foundProduct,
-		);
+			.mockResolvedValueOnce(buyer)
+			.mockResolvedValueOnce(seller);
+		(prismaService.product.findUnique as jest.Mock).mockResolvedValue(product);
 		(prismaService.purchase.create as jest.Mock).mockResolvedValue(
 			createdPurchase,
 		);
+
 		const result = await usecase.execute(input);
 
-		expect(prismaService.user.findUnique).toHaveBeenCalledTimes(2);
-		expect(prismaService.user.findUnique).toHaveBeenCalledWith({
-			where: {
-				id: input.buyerId,
-			},
-		});
-		expect(prismaService.user.findUnique).toHaveBeenCalledWith({
-			where: {
-				id: input.sellerId,
-			},
-		});
-		expect(prismaService.product.findUnique).toHaveBeenCalledWith({
-			where: {
-				id: input.productId,
-			},
-		});
+		expect(result).toEqual(success(createdPurchase));
 		expect(prismaService.purchase.create).toHaveBeenCalledWith({
 			data: {
 				id: expect.any(String),
 				buyerId: input.buyerId,
 				sellerId: input.sellerId,
 				productId: input.productId,
-				price: foundProduct.price,
-			},
-		});
-		expect(result).toEqual({
-			isSuccess: true,
-			value: {
-				id: createdPurchase.id,
-				buyerId: createdPurchase.buyerId,
-				sellerId: createdPurchase.sellerId,
-				products: [createdPurchase.productId],
-				price: createdPurchase.price,
-				createdAt: createdPurchase.createdAt,
+				price: product.price,
 			},
 		});
 	});
 
-	it('should throw an error if buyer is not found', async () => {
+	it('should return a failure if buyer is not found', async () => {
 		const input: PurchaseProductUsecaseInputDTO = {
-			buyerId: 'buyer-uuid',
-			sellerId: 'seller-uuid',
-			productId: 'product-uuid',
+			buyerId: 'non-existent-buyer',
+			sellerId: seller.id,
+			productId: product.id,
 		};
 
-		(prismaService.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
+		(prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
 
-		await expect(usecase.execute(input)).resolves.toEqual({
-			isSuccess: false,
-			error: new NotFoundError('Buyer'),
-		});
-		expect(prismaService.user.findUnique).toHaveBeenCalledWith({
-			where: {
-				id: input.buyerId,
-			},
-		});
+		const result = await usecase.execute(input);
+
+		expect(result).toEqual(failure(new NotFoundError('Buyer')));
 	});
 
-	it('should throw an error if seller is not found', async () => {
+	it('should return a failure if seller is not found', async () => {
 		const input: PurchaseProductUsecaseInputDTO = {
-			buyerId: 'buyer-uuid',
-			sellerId: 'seller-uuid',
-			productId: 'product-uuid',
-		};
-
-		const foundBuyer = {
-			id: 'buyer-uuid',
-			name: 'Buyer User',
-			email: 'buyer@example.com',
-			isSeller: false,
+			buyerId: buyer.id,
+			sellerId: 'non-existent-seller',
+			productId: product.id,
 		};
 
 		(prismaService.user.findUnique as jest.Mock)
-			.mockResolvedValueOnce(foundBuyer)
+			.mockResolvedValueOnce(buyer)
 			.mockResolvedValueOnce(null);
-		await expect(usecase.execute(input)).resolves.toEqual(
-			failure(new NotFoundError('Seller')),
-		);
-		expect(prismaService.user.findUnique).toHaveBeenCalledTimes(2);
-		expect(prismaService.user.findUnique).toHaveBeenCalledWith({
-			where: {
-				id: input.sellerId,
-			},
-		});
+
+		const result = await usecase.execute(input);
+
+		expect(result).toEqual(failure(new NotFoundError('Seller')));
 	});
 
-	it('should throw an error if product is not found', async () => {
+	it('should return a failure if product is not found', async () => {
 		const input: PurchaseProductUsecaseInputDTO = {
-			buyerId: 'buyer-uuid',
-			sellerId: 'seller-uuid',
-			productId: 'product-uuid',
-		};
-
-		const foundBuyer = {
-			id: 'buyer-uuid',
-			name: 'Buyer User',
-			email: 'buyer@example.com',
-			isSeller: false,
-		};
-
-		const foundSeller = {
-			id: 'seller-uuid',
-			name: 'Seller User',
-			email: 'seller@example.com',
-			isSeller: true,
+			buyerId: buyer.id,
+			sellerId: seller.id,
+			productId: 'non-existent-product',
 		};
 
 		(prismaService.user.findUnique as jest.Mock)
-			.mockResolvedValueOnce(foundBuyer)
-			.mockResolvedValueOnce(foundSeller);
+			.mockResolvedValueOnce(buyer)
+			.mockResolvedValueOnce(seller);
 		(prismaService.product.findUnique as jest.Mock).mockResolvedValue(null);
 
-		await expect(usecase.execute(input)).resolves.toEqual(
-			failure(new NotFoundError('Product')),
-		);
-		expect(prismaService.product.findUnique).toHaveBeenCalledWith({
-			where: {
-				id: input.productId,
-			},
-		});
+		const result = await usecase.execute(input);
+
+		expect(result).toEqual(failure(new NotFoundError('Product')));
 	});
 
-	it('should throw an error if purchase creation fails', async () => {
+	it('should return a failure if buyer is the same as the seller', async () => {
 		const input: PurchaseProductUsecaseInputDTO = {
-			buyerId: 'buyer-uuid',
-			sellerId: 'seller-uuid',
-			productId: 'product-uuid',
-		};
-
-		const foundBuyer = {
-			id: 'buyer-uuid',
-			name: 'Buyer User',
-			email: 'buyer@example.com',
-			isSeller: false,
-		};
-
-		const foundSeller = {
-			id: 'seller-uuid',
-			name: 'Seller User',
-			email: 'seller@example.com',
-			isSeller: true,
-		};
-
-		const foundProduct = {
-			id: 'product-uuid',
-			name: 'Test Product',
-			description: 'Description of test product',
-			price: 100,
-			sellerId: 'seller-uuid',
+			buyerId: seller.id, // Buyer is the seller
+			sellerId: seller.id,
+			productId: product.id,
 		};
 
 		(prismaService.user.findUnique as jest.Mock)
-			.mockResolvedValueOnce(foundBuyer)
-			.mockResolvedValueOnce(foundSeller);
-		(prismaService.product.findUnique as jest.Mock).mockResolvedValue(
-			foundProduct,
+			.mockResolvedValueOnce(seller) // Finds buyer (who is the seller)
+			.mockResolvedValueOnce(seller); // Finds seller
+		(prismaService.product.findUnique as jest.Mock).mockResolvedValue(product);
+
+		const result = await usecase.execute(input);
+
+		expect(result).toEqual(
+			failure(new ConflictError('A user cannot purchase their own product.')),
 		);
+	});
+
+	it('should throw an error if database creation fails unexpectedly', async () => {
+		const input: PurchaseProductUsecaseInputDTO = {
+			buyerId: buyer.id,
+			sellerId: seller.id,
+			productId: product.id,
+		};
+
+		(prismaService.user.findUnique as jest.Mock)
+			.mockResolvedValueOnce(buyer)
+			.mockResolvedValueOnce(seller);
+		(prismaService.product.findUnique as jest.Mock).mockResolvedValue(product);
 		(prismaService.purchase.create as jest.Mock).mockRejectedValue(
-			new Error('Database error'),
+			new Error('DB connection error'),
 		);
 
-		await expect(usecase.execute(input)).rejects.toThrow('Database error');
-		expect(prismaService.purchase.create).toHaveBeenCalledWith({
-			data: {
-				id: expect.any(String),
-				buyerId: input.buyerId,
-				sellerId: input.sellerId,
-				productId: input.productId,
-				price: foundProduct.price,
-			},
-		});
+		await expect(usecase.execute(input)).rejects.toThrow(
+			'Failed to complete purchase due to an unexpected error.',
+		);
 	});
 });

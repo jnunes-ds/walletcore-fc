@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { CreateUserUsecase } from './create_user.usecase';
-import { PrismaService } from '../../../../database/prisma.service';
-import { ICreateUserInputDTO } from './create_user.usecase.dto';
-import { success, failure } from '../../../@shared/result/result';
-import { ConflictError } from '../../../@shared/errors/domain_errors';
+import { PrismaService } from '@database/prisma.service';
+import { ICreateUserInputDTO } from '@modules/user/usecases/create_user/create_user.usecase.dto';
+import { failure, success } from '@shared/result/result';
+import { ConflictError } from '@shared/errors/domain_errors';
 
 describe('CreateUserUsecase', () => {
 	let usecase: CreateUserUsecase;

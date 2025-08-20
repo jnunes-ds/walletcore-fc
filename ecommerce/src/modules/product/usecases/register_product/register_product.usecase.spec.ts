@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { RegisterProductUsecase } from './register_product.usecase';
-import { PrismaService } from '../../../../database/prisma.service';
-import { IRegisterProductUsecaseInputDTO } from './register_product.usecase.dto';
-import { success, failure } from '../../../@shared/result/result';
-import {
-	ConflictError,
-	NotFoundError,
-} from '../../../@shared/errors/domain_errors';
+import { PrismaService } from '@database/prisma.service';
+import { IRegisterProductUsecaseInputDTO } from '@modules/product/usecases/register_product/register_product.usecase.dto';
+import { failure, success } from '@shared/result/result';
+import { ConflictError, NotFoundError } from '@shared/errors/domain_errors';
 
 describe('RegisterProductUsecase', () => {
 	let usecase: RegisterProductUsecase;

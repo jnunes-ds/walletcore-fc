@@ -1,25 +1,29 @@
-import UseCaseInterface from '../../../@shared/usecase/usecase.interface';
+import { PrismaService } from '@database/prisma.service';
+import Purchase from '@modules/purchase/entity/purchase.entity';
+import {
+	ConflictError,
+	DomainError,
+	NotFoundError,
+} from '@shared/errors/domain_errors';
+import { Result, failure, success } from '@shared/result/result';
+import UseCaseInterface from '@shared/usecase/usecase.interface';
 import {
 	PurchaseProductUsecaseInputDTO,
 	PurchaseProductUsecaseOutputDTO,
 } from './purchase_product.usecase.dto';
-import { PrismaService } from '../../../../database/prisma.service';
-import Purchase from '../../entity/purchase.entity';
-import { Result, failure, success } from '../../../@shared/result/result';
-import { NotFoundError } from '../../../@shared/errors/domain_errors';
 
 export class PurchaseProductUsecase
 	implements
 		UseCaseInterface<
 			PurchaseProductUsecaseInputDTO,
-			Result<PurchaseProductUsecaseOutputDTO, NotFoundError>
+			Result<PurchaseProductUsecaseOutputDTO, DomainError>
 		>
 {
 	constructor(private prisma: PrismaService) {}
 
 	async execute(
 		input: PurchaseProductUsecaseInputDTO,
-	): Promise<Result<PurchaseProductUsecaseOutputDTO, NotFoundError>> {
+	): Promise<Result<PurchaseProductUsecaseOutputDTO, DomainError>> {
 		const buyer = await this.prisma.user.findUnique({
 			where: {
 				id: input.buyerId,
@@ -48,6 +52,12 @@ export class PurchaseProductUsecase
 
 		if (!product) {
 			return failure(new NotFoundError('Product'));
+		}
+
+		if (product.sellerId === input.buyerId) {
+			return failure(
+				new ConflictError('A user cannot purchase their own product.'),
+			);
 		}
 
 		const purchase = new Purchase(
@@ -79,7 +89,9 @@ export class PurchaseProductUsecase
 			});
 		} catch (error) {
 			console.error('Unexpected error during purchase creation:', error);
-			throw new Error(error);
+			throw new Error(
+				'Failed to complete purchase due to an unexpected error.',
+			);
 		}
 	}
 }

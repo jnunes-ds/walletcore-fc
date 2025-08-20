@@ -1,4 +1,4 @@
-import Entity from '../../@shared/entity/entity.abstract';
+import Entity from '@shared/entity/entity.abstract';
 
 export default class Purchase extends Entity {
 	private _buyerId: string;
