@@ -49,7 +49,6 @@ export class PurchaseProductUsecase
 				input.sellerId,
 				input.productId,
 				product.price,
-				new Date(),
 			);
 
 			const createdPurchase = await this.productRepository.purchase.create({
@@ -69,7 +68,6 @@ export class PurchaseProductUsecase
 				products: [createdPurchase.productId],
 			};
 		} catch (e) {
-			console.error(e);
 			throw new Error(e);
 		}
 	}

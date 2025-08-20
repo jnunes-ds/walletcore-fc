@@ -13,7 +13,6 @@ export default class Purchase extends Entity {
 		sellerId: string,
 		productId: string,
 		price: number,
-		purchaseDate: Date,
 	) {
 		super();
 		this._id = id ?? Math.random().toString();
@@ -21,7 +20,7 @@ export default class Purchase extends Entity {
 		this._sellerId = sellerId;
 		this._productId = productId;
 		this._price = price;
-		this._purchaseDate = purchaseDate;
+		this._purchaseDate = new Date();
 	}
 
 	get buyerId(): string {

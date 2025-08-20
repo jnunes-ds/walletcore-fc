@@ -1,4 +1,3 @@
-// crie testes para o ./register_product.usecase.ts
 /* eslint-disable @typescript-eslint/unbound-method */
 import { RegisterProductUsecase } from './register_product.usecase';
 import { PrismaService } from '../../../../database/prisma.service';
