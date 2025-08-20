@@ -33,8 +33,7 @@ export class CreateUserUsecase
 				email: userCreated.email,
 				isSeller: userCreated.isSeller,
 			};
-		} catch (error) {
-			console.error(error);
+		} catch {
 			throw new Error('Error creating user');
 		}
 	}
