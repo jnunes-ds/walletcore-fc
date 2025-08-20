@@ -5,53 +5,61 @@ import {
 } from './purchase_product.usecase.dto';
 import { PrismaService } from '../../../../database/prisma.service';
 import Purchase from '../../entity/purchase.entity';
+import { Result, failure, success } from '../../../@shared/result/result';
+import { NotFoundError } from '../../../@shared/errors/domain_errors';
 
 export class PurchaseProductUsecase
 	implements
 		UseCaseInterface<
 			PurchaseProductUsecaseInputDTO,
-			PurchaseProductUsecaseOutputDTO
+			Result<PurchaseProductUsecaseOutputDTO, NotFoundError>
 		>
 {
-	constructor(private productRepository: PrismaService) {}
+	constructor(private prisma: PrismaService) {}
 
 	async execute(
 		input: PurchaseProductUsecaseInputDTO,
-	): Promise<PurchaseProductUsecaseOutputDTO> {
+	): Promise<Result<PurchaseProductUsecaseOutputDTO, NotFoundError>> {
+		const buyer = await this.prisma.user.findUnique({
+			where: {
+				id: input.buyerId,
+			},
+		});
+
+		if (!buyer) {
+			return failure(new NotFoundError('Buyer'));
+		}
+
+		const seller = await this.prisma.user.findUnique({
+			where: {
+				id: input.sellerId,
+			},
+		});
+
+		if (!seller) {
+			return failure(new NotFoundError('Seller'));
+		}
+
+		const product = await this.prisma.product.findUnique({
+			where: {
+				id: input.productId,
+			},
+		});
+
+		if (!product) {
+			return failure(new NotFoundError('Product'));
+		}
+
+		const purchase = new Purchase(
+			null,
+			input.buyerId,
+			input.sellerId,
+			input.productId,
+			product.price,
+		);
+
 		try {
-			const buyer = await this.productRepository.user.findUnique({
-				where: {
-					id: input.buyerId,
-				},
-			});
-
-			if (!buyer) throw new Error('Buyer not found');
-
-			const seller = await this.productRepository.user.findUnique({
-				where: {
-					id: input.sellerId,
-				},
-			});
-
-			if (!seller) throw new Error('Seller not found');
-
-			const product = await this.productRepository.product.findUnique({
-				where: {
-					id: input.productId,
-				},
-			});
-
-			if (!product) throw new Error('Product not found');
-
-			const purchase = new Purchase(
-				null,
-				input.buyerId,
-				input.sellerId,
-				input.productId,
-				product.price,
-			);
-
-			const createdPurchase = await this.productRepository.purchase.create({
+			const createdPurchase = await this.prisma.purchase.create({
 				data: {
 					id: purchase.id,
 					buyerId: purchase.buyerId,
@@ -61,14 +69,17 @@ export class PurchaseProductUsecase
 				},
 			});
 
-			return {
+			return success({
 				id: createdPurchase.id,
 				buyerId: createdPurchase.buyerId,
 				sellerId: createdPurchase.sellerId,
+				price: createdPurchase.price,
+				createdAt: createdPurchase.createdAt,
 				products: [createdPurchase.productId],
-			};
-		} catch (e) {
-			throw new Error(e);
+			});
+		} catch (error) {
+			console.error('Unexpected error during purchase creation:', error);
+			throw new Error(error);
 		}
 	}
 }

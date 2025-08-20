@@ -2,6 +2,8 @@
 import { PurchaseProductUsecase } from './purchase_product.usecase';
 import { PrismaService } from '../../../../database/prisma.service';
 import { PurchaseProductUsecaseInputDTO } from './purchase_product.usecase.dto';
+import { NotFoundError } from '../../../@shared/errors/domain_errors';
+import { failure } from '../../../@shared/result/result';
 
 describe('PurchaseProductUsecase', () => {
 	let usecase: PurchaseProductUsecase;
@@ -97,10 +99,15 @@ describe('PurchaseProductUsecase', () => {
 			},
 		});
 		expect(result).toEqual({
-			id: createdPurchase.id,
-			buyerId: createdPurchase.buyerId,
-			sellerId: createdPurchase.sellerId,
-			products: [createdPurchase.productId],
+			isSuccess: true,
+			value: {
+				id: createdPurchase.id,
+				buyerId: createdPurchase.buyerId,
+				sellerId: createdPurchase.sellerId,
+				products: [createdPurchase.productId],
+				price: createdPurchase.price,
+				createdAt: createdPurchase.createdAt,
+			},
 		});
 	});
 
@@ -113,7 +120,10 @@ describe('PurchaseProductUsecase', () => {
 
 		(prismaService.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
 
-		await expect(usecase.execute(input)).rejects.toThrow('Buyer not found');
+		await expect(usecase.execute(input)).resolves.toEqual({
+			isSuccess: false,
+			error: new NotFoundError('Buyer'),
+		});
 		expect(prismaService.user.findUnique).toHaveBeenCalledWith({
 			where: {
 				id: input.buyerId,
@@ -138,7 +148,9 @@ describe('PurchaseProductUsecase', () => {
 		(prismaService.user.findUnique as jest.Mock)
 			.mockResolvedValueOnce(foundBuyer)
 			.mockResolvedValueOnce(null);
-		await expect(usecase.execute(input)).rejects.toThrow('Seller not found');
+		await expect(usecase.execute(input)).resolves.toEqual(
+			failure(new NotFoundError('Seller')),
+		);
 		expect(prismaService.user.findUnique).toHaveBeenCalledTimes(2);
 		expect(prismaService.user.findUnique).toHaveBeenCalledWith({
 			where: {
@@ -173,7 +185,9 @@ describe('PurchaseProductUsecase', () => {
 			.mockResolvedValueOnce(foundSeller);
 		(prismaService.product.findUnique as jest.Mock).mockResolvedValue(null);
 
-		await expect(usecase.execute(input)).rejects.toThrow('Product not found');
+		await expect(usecase.execute(input)).resolves.toEqual(
+			failure(new NotFoundError('Product')),
+		);
 		expect(prismaService.product.findUnique).toHaveBeenCalledWith({
 			where: {
 				id: input.productId,
@@ -220,9 +234,7 @@ describe('PurchaseProductUsecase', () => {
 			new Error('Database error'),
 		);
 
-		await expect(usecase.execute(input)).rejects.toThrow(
-			'Error: Database error',
-		);
+		await expect(usecase.execute(input)).rejects.toThrow('Database error');
 		expect(prismaService.purchase.create).toHaveBeenCalledWith({
 			data: {
 				id: expect.any(String),

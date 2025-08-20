@@ -5,48 +5,59 @@ import {
 } from './register_product.usecase.dto';
 import { PrismaService } from '../../../../database/prisma.service';
 import Product from '../../entity/product.entity';
+import { Result, failure, success } from '../../../@shared/result/result';
+import {
+	DomainError,
+	NotFoundError,
+	ConflictError,
+} from '../../../@shared/errors/domain_errors';
 
 export class RegisterProductUsecase
 	implements
 		UseCaseInterface<
 			IRegisterProductUsecaseInputDTO,
-			IRegisterProductUsecaseOutputDTO
+			Result<IRegisterProductUsecaseOutputDTO, DomainError>
 		>
 {
-	constructor(private productRepository: PrismaService) {}
+	constructor(private prisma: PrismaService) {}
 
 	async execute(
 		input: IRegisterProductUsecaseInputDTO,
-	): Promise<IRegisterProductUsecaseOutputDTO> {
-		try {
-			const foundedUser = await this.productRepository.user.findUnique({
-				where: {
-					id: input.sellerId,
-				},
-			});
+	): Promise<Result<IRegisterProductUsecaseOutputDTO, DomainError>> {
+		const seller = await this.prisma.user.findUnique({
+			where: {
+				id: input.sellerId,
+			},
+		});
 
-			if (!foundedUser) {
-				throw new Error('There ara no user with the id provided');
-			}
+		if (!seller) {
+			return failure(new NotFoundError('Seller'));
+		}
 
-			const productAlreadyRegistered =
-				await this.productRepository.product.findFirst({
-					where: {
-						name: input.name,
-						sellerId: input.sellerId,
-					},
-				});
+		const productAlreadyRegistered = await this.prisma.product.findFirst({
+			where: {
+				name: input.name,
+				sellerId: input.sellerId,
+			},
+		});
 
-			if (productAlreadyRegistered) throw new Error('Product already exists');
-
-			const product = new Product(
-				input.name,
-				input.description,
-				input.price,
-				input.sellerId,
+		if (productAlreadyRegistered) {
+			return failure(
+				new ConflictError(
+					'Product with this name already registered by this seller',
+				),
 			);
+		}
 
-			const createdProduct = await this.productRepository.product.create({
+		const product = new Product(
+			input.name,
+			input.description,
+			input.price,
+			input.sellerId,
+		);
+
+		try {
+			const createdProduct = await this.prisma.product.create({
 				data: {
 					id: product.id,
 					name: product.name,
@@ -56,16 +67,16 @@ export class RegisterProductUsecase
 				},
 			});
 
-			return {
+			return success({
 				id: createdProduct.id,
 				name: createdProduct.name,
 				price: createdProduct.price,
 				description: createdProduct.description ?? '',
 				sellerId: createdProduct.sellerId,
-			};
-		} catch (e) {
-			console.error(e);
-			throw new Error(e);
+			});
+		} catch (error) {
+			console.error('Unexpected error registering product:', error);
+			throw new Error('Failed to register product due to an unexpected error.');
 		}
 	}
 }

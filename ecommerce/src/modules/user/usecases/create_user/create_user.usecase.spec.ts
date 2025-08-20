@@ -2,6 +2,8 @@
 import { CreateUserUsecase } from './create_user.usecase';
 import { PrismaService } from '../../../../database/prisma.service';
 import { ICreateUserInputDTO } from './create_user.usecase.dto';
+import { success, failure } from '../../../@shared/result/result';
+import { ConflictError } from '../../../@shared/errors/domain_errors';
 
 describe('CreateUserUsecase', () => {
 	let usecase: CreateUserUsecase;
@@ -11,6 +13,7 @@ describe('CreateUserUsecase', () => {
 		prismaService = {
 			user: {
 				create: jest.fn(),
+				findUnique: jest.fn(),
 			},
 		} as any;
 		usecase = new CreateUserUsecase(prismaService);
@@ -29,41 +32,59 @@ describe('CreateUserUsecase', () => {
 			isSeller: false,
 		};
 
+		(prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
 		(prismaService.user.create as jest.Mock).mockResolvedValue(createdUser);
 
 		const result = await usecase.execute(input);
 
+		expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+			where: { email: input.email },
+		});
 		expect(prismaService.user.create).toHaveBeenCalledWith({
 			data: {
 				id: expect.any(String),
 				name: input.name,
 				email: input.email,
 				isSeller: false,
-				products: {},
-				sales: {},
-				purchases: {},
 			},
 		});
-		expect(result).toEqual({
-			id: createdUser.id,
-			name: createdUser.name,
-			email: createdUser.email,
-			isSeller: createdUser.isSeller,
-		});
+		expect(result).toEqual(success(createdUser));
 	});
 
-	it('should throw an error if user creation fails', async () => {
+	it('should return a failure result if email is already in use', async () => {
 		const input: ICreateUserInputDTO = {
 			name: 'John Doe',
 			email: 'john.doe@example.com',
 		};
 
-		const errorMessage = 'Database error';
-		(prismaService.user.create as jest.Mock).mockRejectedValue(
-			new Error(errorMessage),
+		const existingUser = { id: 'some-id', ...input, isSeller: false };
+		(prismaService.user.findUnique as jest.Mock).mockResolvedValue(
+			existingUser,
 		);
 
-		await expect(usecase.execute(input)).rejects.toThrow('Error creating user');
+		const result = await usecase.execute(input);
+
+		expect(result).toEqual(failure(new ConflictError('Email already in use')));
+		expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+			where: { email: input.email },
+		});
+		expect(prismaService.user.create).not.toHaveBeenCalled();
+	});
+
+	it('should throw an error if database creation fails unexpectedly', async () => {
+		const input: ICreateUserInputDTO = {
+			name: 'John Doe',
+			email: 'john.doe@example.com',
+		};
+
+		(prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
+		(prismaService.user.create as jest.Mock).mockRejectedValue(
+			new Error('Database connection lost'),
+		);
+
+		await expect(usecase.execute(input)).rejects.toThrow(
+			'Database connection lost',
+		);
 
 		expect(prismaService.user.create).toHaveBeenCalledWith({
 			data: {
@@ -71,9 +92,6 @@ describe('CreateUserUsecase', () => {
 				name: input.name,
 				email: input.email,
 				isSeller: false,
-				products: {},
-				sales: {},
-				purchases: {},
 			},
 		});
 	});

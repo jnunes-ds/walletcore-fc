@@ -14,3 +14,9 @@ export class NotFoundError extends DomainError {
 		super(`${resource} not found`);
 	}
 }
+
+export class ConflictError extends DomainError {
+	constructor(message: string) {
+		super(message);
+	}
+}

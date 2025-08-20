@@ -5,36 +5,52 @@ import {
 	ICreateUserOtuputDTO,
 } from './create_user.usecase.dto';
 import UseCaseInterface from '../../../@shared/usecase/usecase.interface';
+import { Result, failure, success } from '../../../@shared/result/result';
+import {
+	ConflictError,
+	DomainError,
+} from '../../../@shared/errors/domain_errors';
 
 export class CreateUserUsecase
-	implements UseCaseInterface<ICreateUserInputDTO, ICreateUserOtuputDTO>
+	implements
+		UseCaseInterface<
+			ICreateUserInputDTO,
+			Result<ICreateUserOtuputDTO, DomainError>
+		>
 {
-	constructor(private productRepository: PrismaService) {}
+	constructor(private prisma: PrismaService) {}
 
-	async execute(input: ICreateUserInputDTO): Promise<ICreateUserOtuputDTO> {
+	async execute(
+		input: ICreateUserInputDTO,
+	): Promise<Result<ICreateUserOtuputDTO, DomainError>> {
+		const emailInUse = await this.prisma.user.findUnique({
+			where: { email: input.email },
+		});
+
+		if (emailInUse) {
+			return failure(new ConflictError('Email already in use'));
+		}
+
+		const user = new User(input.name, input.email);
+
 		try {
-			const user = new User(input.name, input.email);
-
-			const userCreated = await this.productRepository.user.create({
+			const userCreated = await this.prisma.user.create({
 				data: {
 					id: user.id,
 					name: user.name,
 					email: user.email,
 					isSeller: user.isSeller,
-					products: {},
-					sales: {},
-					purchases: {},
 				},
 			});
 
-			return {
+			return success({
 				id: userCreated.id,
 				name: userCreated.name,
 				email: userCreated.email,
 				isSeller: userCreated.isSeller,
-			};
-		} catch {
-			throw new Error('Error creating user');
+			});
+		} catch (error) {
+			throw new Error(error);
 		}
 	}
 }
