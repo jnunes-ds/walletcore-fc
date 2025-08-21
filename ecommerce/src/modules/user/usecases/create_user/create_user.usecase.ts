@@ -15,12 +15,12 @@ export class CreateUserUsecase
 			Result<ICreateUserOtuputDTO, DomainError>
 		>
 {
-	constructor(private prisma: PrismaService) {}
+	constructor(private readonly databaseService: PrismaService) {}
 
 	async execute(
 		input: ICreateUserInputDTO,
 	): Promise<Result<ICreateUserOtuputDTO, DomainError>> {
-		const emailInUse = await this.prisma.user.findUnique({
+		const emailInUse = await this.databaseService.user.findUnique({
 			where: { email: input.email },
 		});
 
@@ -31,7 +31,7 @@ export class CreateUserUsecase
 		const user = new User(input.name, input.email);
 
 		try {
-			const userCreated = await this.prisma.user.create({
+			const userCreated = await this.databaseService.user.create({
 				data: {
 					id: user.id,
 					name: user.name,
