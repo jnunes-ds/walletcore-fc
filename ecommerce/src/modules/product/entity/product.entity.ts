@@ -1,52 +1,25 @@
-import Entity from '@shared/entity/entity.abstract';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 
-export default class Product extends Entity {
-	private _name: string;
-	private _description: string;
-	private _price: number;
-	private _sellerId: string;
+interface IProductProps {
+	id?: string;
+	name: string;
+	description?: string;
+	price: number;
+	sellerId: string;
+}
 
-	constructor(
-		name: string,
-		description: string,
-		price: number,
-		userId: string,
-	) {
-		super();
-		this._id = uuidv4();
-		this._name = name;
-		this._description = description;
+export default class Product {
+	readonly id: string;
+	readonly name: string;
+	readonly description: string | null;
+	readonly price: number;
+	readonly sellerId: string;
 
-		this._price = price;
-		this._sellerId = userId;
-	}
-
-	get name(): string {
-		return this._name;
-	}
-
-	get description(): string {
-		return this._description;
-	}
-
-	get price(): number {
-		return this._price;
-	}
-
-	get sellerId(): string {
-		return this._sellerId;
-	}
-
-	changeName(name: string) {
-		this._name = name;
-	}
-
-	changeDescription(description: string) {
-		this._description = description;
-	}
-
-	changePrice(price: number) {
-		this._price = price;
+	constructor(props: IProductProps) {
+		this.id = props.id ?? randomUUID();
+		this.name = props.name;
+		this.description = props.description ?? null;
+		this.price = props.price;
+		this.sellerId = props.sellerId;
 	}
 }

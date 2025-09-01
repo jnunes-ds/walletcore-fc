@@ -4,10 +4,13 @@ import { PrismaService } from '@database/prisma.service';
 import { IRegisterProductUsecaseInputDTO } from '@modules/product/usecases/register_product/register_product.usecase.dto';
 import { failure, success } from '@shared/result/result';
 import { ConflictError, NotFoundError } from '@shared/errors/domain_errors';
+import { ClientKafka } from '@nestjs/microservices';
+import { Logger } from '@nestjs/common';
 
 describe('RegisterProductUsecase', () => {
 	let usecase: RegisterProductUsecase;
 	let prismaService: PrismaService;
+	let kafkaClient: ClientKafka;
 
 	beforeEach(() => {
 		prismaService = {
@@ -19,7 +22,12 @@ describe('RegisterProductUsecase', () => {
 				create: jest.fn(),
 			},
 		} as any;
-		usecase = new RegisterProductUsecase(prismaService);
+		kafkaClient = {
+			emit: jest.fn().mockReturnValue({
+				subscribe: jest.fn(),
+			}),
+		} as any;
+		usecase = new RegisterProductUsecase(prismaService, kafkaClient);
 	});
 
 	it('should register a product successfully', async () => {
@@ -73,6 +81,10 @@ describe('RegisterProductUsecase', () => {
 				sellerId: input.sellerId,
 			},
 		});
+		expect(kafkaClient.emit).toHaveBeenCalledWith(
+			'product_created',
+			createdProduct,
+		);
 		expect(result).toEqual(
 			success({
 				id: createdProduct.id,
@@ -102,6 +114,7 @@ describe('RegisterProductUsecase', () => {
 		});
 		expect(prismaService.product.findFirst).not.toHaveBeenCalled();
 		expect(prismaService.product.create).not.toHaveBeenCalled();
+		expect(kafkaClient.emit).not.toHaveBeenCalled();
 	});
 
 	it('should return a failure if the product already exists for the seller', async () => {
@@ -132,10 +145,15 @@ describe('RegisterProductUsecase', () => {
 		expect(prismaService.product.findFirst).toHaveBeenCalledWith({
 			where: { name: input.name, sellerId: input.sellerId },
 		});
+		expect(kafkaClient.emit).not.toHaveBeenCalled();
 		expect(prismaService.product.create).not.toHaveBeenCalled();
 	});
 
 	it('should throw an error if database creation fails unexpectedly', async () => {
+		const loggerErrorSpy = jest
+			.spyOn(Logger.prototype, 'error')
+			.mockImplementation(() => {});
+
 		const input: IRegisterProductUsecaseInputDTO = {
 			name: 'Test Product',
 			description: 'Description of test product',
@@ -152,7 +170,7 @@ describe('RegisterProductUsecase', () => {
 		);
 
 		await expect(usecase.execute(input)).rejects.toThrow(
-			'Failed to register product due to an unexpected error.',
+			'Database connection lost',
 		);
 
 		expect(prismaService.product.create).toHaveBeenCalledWith({
@@ -164,5 +182,9 @@ describe('RegisterProductUsecase', () => {
 				sellerId: input.sellerId,
 			},
 		});
+		expect(kafkaClient.emit).not.toHaveBeenCalled();
+		expect(loggerErrorSpy).toHaveBeenCalled();
+
+		loggerErrorSpy.mockRestore();
 	});
 });

@@ -1,13 +1,16 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { CreateUserUsecase } from './create_user.usecase';
-import { PrismaService } from '@database/prisma.service';
 import { ICreateUserInputDTO } from '@modules/user/usecases/create_user/create_user.usecase.dto';
 import { failure, success } from '@shared/result/result';
 import { ConflictError } from '@shared/errors/domain_errors';
+import { PrismaService } from '@database/prisma.service';
+import { ClientKafka } from '@nestjs/microservices';
+import { Logger } from '@nestjs/common';
 
 describe('CreateUserUsecase', () => {
 	let usecase: CreateUserUsecase;
 	let prismaService: PrismaService;
+	let kafkaClient: ClientKafka;
 
 	beforeEach(() => {
 		prismaService = {
@@ -16,7 +19,12 @@ describe('CreateUserUsecase', () => {
 				findUnique: jest.fn(),
 			},
 		} as any;
-		usecase = new CreateUserUsecase(prismaService);
+		kafkaClient = {
+			emit: jest.fn().mockReturnValue({
+				subscribe: jest.fn(),
+			}),
+		} as any;
+		usecase = new CreateUserUsecase(prismaService, kafkaClient);
 	});
 
 	it('should create a user successfully', async () => {
@@ -48,6 +56,7 @@ describe('CreateUserUsecase', () => {
 				isSeller: false,
 			},
 		});
+		expect(kafkaClient.emit).toHaveBeenCalledWith('user_created', createdUser);
 		expect(result).toEqual(success(createdUser));
 	});
 
@@ -68,10 +77,16 @@ describe('CreateUserUsecase', () => {
 		expect(prismaService.user.findUnique).toHaveBeenCalledWith({
 			where: { email: input.email },
 		});
+		expect(kafkaClient.emit).not.toHaveBeenCalled();
 		expect(prismaService.user.create).not.toHaveBeenCalled();
 	});
 
 	it('should throw an error if database creation fails unexpectedly', async () => {
+		// Mock do logger para evitar que a saída do erro polua o console de teste
+		// e para verificar se ele foi chamado.
+		const loggerErrorSpy = jest
+			.spyOn(Logger.prototype, 'error')
+			.mockImplementation(() => {});
 		const input: ICreateUserInputDTO = {
 			name: 'John Doe',
 			email: 'john.doe@example.com',
@@ -94,5 +109,10 @@ describe('CreateUserUsecase', () => {
 				isSeller: false,
 			},
 		});
+		expect(kafkaClient.emit).not.toHaveBeenCalled();
+		expect(loggerErrorSpy).toHaveBeenCalled();
+
+		// Restaura o mock
+		loggerErrorSpy.mockRestore();
 	});
 });

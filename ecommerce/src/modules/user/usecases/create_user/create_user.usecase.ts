@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-member-access */
 import {
 	ICreateUserInputDTO,
 	ICreateUserOtuputDTO,
@@ -50,7 +51,6 @@ export class CreateUserUsecase
 				error: (err) => {
 					this.logger.error(
 						`Failed to emit user_created event for user ${userCreated.id}.`,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						err.stack,
 					);
 				},
@@ -63,7 +63,10 @@ export class CreateUserUsecase
 				isSeller: userCreated.isSeller,
 			});
 		} catch (error) {
-			console.error(error);
+			this.logger.error(
+				`Unexpected error while creating user: ${error.message}`,
+				error.stack,
+			);
 			throw error;
 		}
 	}

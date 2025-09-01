@@ -1,16 +1,19 @@
-import UseCaseInterface from '@shared/usecase/usecase.interface';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
 	IRegisterProductUsecaseInputDTO,
 	IRegisterProductUsecaseOutputDTO,
 } from './register_product.usecase.dto';
-import Product from '../../entity/product.entity';
-import { Result, failure, success } from '@shared/result/result';
+import { PrismaService } from '@database/prisma.service';
+import Product from '@modules/product/entity/product.entity';
+import { Inject, Logger } from '@nestjs/common';
+import { ClientKafka } from '@nestjs/microservices';
+import UseCaseInterface from '@shared/usecase/usecase.interface';
+import { failure, Result, success } from '@shared/result/result';
 import {
 	ConflictError,
 	DomainError,
 	NotFoundError,
 } from '@shared/errors/domain_errors';
-import { PrismaService } from '@database/prisma.service';
 
 export class RegisterProductUsecase
 	implements
@@ -19,29 +22,29 @@ export class RegisterProductUsecase
 			Result<IRegisterProductUsecaseOutputDTO, DomainError>
 		>
 {
-	constructor(private prisma: PrismaService) {}
+	private readonly logger = new Logger(RegisterProductUsecase.name);
+
+	constructor(
+		private readonly databaseService: PrismaService,
+		@Inject('KAFKA_PRODUCER') private readonly kafkaClient: ClientKafka,
+	) {}
 
 	async execute(
 		input: IRegisterProductUsecaseInputDTO,
 	): Promise<Result<IRegisterProductUsecaseOutputDTO, DomainError>> {
-		const seller = await this.prisma.user.findUnique({
-			where: {
-				id: input.sellerId,
-			},
+		const sellerExists = await this.databaseService.user.findUnique({
+			where: { id: input.sellerId },
 		});
 
-		if (!seller) {
+		if (!sellerExists) {
 			return failure(new NotFoundError('Seller'));
 		}
 
-		const productAlreadyRegistered = await this.prisma.product.findFirst({
-			where: {
-				name: input.name,
-				sellerId: input.sellerId,
-			},
+		const productExists = await this.databaseService.product.findFirst({
+			where: { name: input.name, sellerId: input.sellerId },
 		});
 
-		if (productAlreadyRegistered) {
+		if (productExists) {
 			return failure(
 				new ConflictError(
 					'Product with this name already registered by this seller',
@@ -49,34 +52,29 @@ export class RegisterProductUsecase
 			);
 		}
 
-		const product = new Product(
-			input.name,
-			input.description,
-			input.price,
-			input.sellerId,
-		);
+		const product = new Product(input);
 
 		try {
-			const createdProduct = await this.prisma.product.create({
-				data: {
-					id: product.id,
-					name: product.name,
-					price: product.price,
-					description: product.description,
-					sellerId: product.sellerId,
+			const productCreated = await this.databaseService.product.create({
+				data: { ...product },
+			});
+
+			this.kafkaClient.emit('product_created', productCreated).subscribe({
+				error: (err) => {
+					this.logger.error(
+						`Failed to emit product_created event for product ${productCreated.id}.`,
+						err.stack,
+					);
 				},
 			});
 
-			return success({
-				id: createdProduct.id,
-				name: createdProduct.name,
-				price: createdProduct.price,
-				description: createdProduct.description ?? '',
-				sellerId: createdProduct.sellerId,
-			});
+			return success(productCreated);
 		} catch (error) {
-			console.error('Unexpected error registering product:', error);
-			throw new Error('Failed to register product due to an unexpected error.');
+			this.logger.error(
+				`Unexpected error while registering product: ${error.message}`,
+				error.stack,
+			);
+			throw error;
 		}
 	}
 }
