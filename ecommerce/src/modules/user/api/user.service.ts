@@ -1,17 +1,25 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { CreateUserUsecase } from '@modules/user/usecases/create_user/create_user.usecase';
-import { PrismaService } from '@database/prisma.service';
+import { ConflictError } from '@shared/errors/domain_errors';
 
 @Injectable()
 export class UserService {
-	constructor(private readonly databaseService: PrismaService) {}
+	constructor(private readonly createUserUsecase: CreateUserUsecase) {}
 	async create(createUserDto: CreateUserDto) {
-		const usecase = new CreateUserUsecase(this.databaseService);
-
-		await usecase.execute({
+		const result = await this.createUserUsecase.execute({
 			name: createUserDto.name,
 			email: createUserDto.email,
 		});
+
+		if (!result.isSuccess) {
+			const error = result.error;
+			if (error instanceof ConflictError) {
+				throw new ConflictException(error.message);
+			}
+			throw error;
+		}
+
+		return result.value;
 	}
 }

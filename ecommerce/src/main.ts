@@ -12,9 +12,10 @@ import { ConfigService } from '@nestjs/config';
 function runPrismaMigrations() {
 	console.log('Checking and applying Prisma migrations...');
 	try {
-		// `prisma migrate deploy` é o comando ideal para ambientes de produção/staging.
-		// Ele não gera novos arquivos de migração, apenas aplica os existentes.
-		execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+		// Para prototipagem e desenvolvimento local, `db push` é mais simples.
+		// Ele sincroniza o schema com o banco de dados sem criar arquivos de migração.
+		// Isso evita a complexidade do shadow database e é totalmente não-interativo.
+		execSync('npx prisma db push', { stdio: 'inherit' });
 		execSync('npx prisma db seed', { stdio: 'inherit' });
 		console.log('Prisma migrations applied successfully.');
 	} catch (error) {
@@ -32,7 +33,12 @@ async function bootstrap() {
 		transport: Transport.KAFKA,
 		options: {
 			client: {
-				brokers: ['localhost:9092'],
+				brokers: ['kafka:29092'],
+				// Adiciona lógica de retry para tornar a conexão mais robusta
+				retry: {
+					initialRetryTime: 300,
+					retries: 8,
+				},
 			},
 			consumer: {
 				groupId: 'ecommerce-consumer',

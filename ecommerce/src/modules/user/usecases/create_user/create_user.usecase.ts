@@ -4,6 +4,8 @@ import {
 } from './create_user.usecase.dto';
 import { PrismaService } from '@database/prisma.service';
 import User from '@modules/user/entity/user.entity';
+import { Inject, Logger } from '@nestjs/common';
+import { ClientKafka } from '@nestjs/microservices';
 import UseCaseInterface from '@shared/usecase/usecase.interface';
 import { failure, Result, success } from '@shared/result/result';
 import { ConflictError, DomainError } from '@shared/errors/domain_errors';
@@ -15,7 +17,12 @@ export class CreateUserUsecase
 			Result<ICreateUserOtuputDTO, DomainError>
 		>
 {
-	constructor(private readonly databaseService: PrismaService) {}
+	private readonly logger = new Logger(CreateUserUsecase.name);
+
+	constructor(
+		private readonly databaseService: PrismaService,
+		@Inject('KAFKA_PRODUCER') private readonly kafkaClient: ClientKafka,
+	) {}
 
 	async execute(
 		input: ICreateUserInputDTO,
@@ -39,6 +46,15 @@ export class CreateUserUsecase
 					isSeller: user.isSeller,
 				},
 			});
+			this.kafkaClient.emit('user_created', userCreated).subscribe({
+				error: (err) => {
+					this.logger.error(
+						`Failed to emit user_created event for user ${userCreated.id}.`,
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						err.stack,
+					);
+				},
+			});
 
 			return success({
 				id: userCreated.id,
@@ -47,7 +63,7 @@ export class CreateUserUsecase
 				isSeller: userCreated.isSeller,
 			});
 		} catch (error) {
-			throw new Error(error);
+			throw error;
 		}
 	}
 }

@@ -1,0 +1,11 @@
+### Create a new user
+POST http://localhost:3001/user
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john.doe@example.com"
+}
+
+### GET Hello World
+GET http://localhost:3001/
