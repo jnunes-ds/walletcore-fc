@@ -3,9 +3,9 @@ POST http://localhost:3001/user
 Content-Type: application/json
 
 {
-  "name": "Joana",
-  "email": "joana.doe@example.com"
+  "name": "Joanna Doe",
+  "email": "joanna.doe@example.com"
 }
 
 ### GET Hello World
-GET http://localhost:3001
+GET http://localhost:3001/
