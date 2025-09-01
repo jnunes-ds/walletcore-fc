@@ -63,6 +63,7 @@ export class CreateUserUsecase
 				isSeller: userCreated.isSeller,
 			});
 		} catch (error) {
+			console.error(error);
 			throw error;
 		}
 	}

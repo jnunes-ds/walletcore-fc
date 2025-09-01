@@ -2,9 +2,7 @@ import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { CreateUserUsecase } from '../usecases/create_user/create_user.usecase';
 import { UserService } from './user.service';
-import { PrismaService } from '@database/prisma.service';
 import { UserController } from './user.controller';
-
 @Module({
 	imports: [
 		ClientsModule.register([
@@ -26,6 +24,6 @@ import { UserController } from './user.controller';
 		]),
 	],
 	controllers: [UserController],
-	providers: [UserService, CreateUserUsecase, PrismaService],
+	providers: [UserService, CreateUserUsecase],
 })
 export class UserModule {}

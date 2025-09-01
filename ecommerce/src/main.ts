@@ -1,13 +1,12 @@
-/*
-	eslint-disable @typescript-eslint/no-unsafe-assignment,
-	@typescript-eslint/no-unsafe-call,
-	@typescript-eslint/no-unsafe-member-access
-*/
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+
 import { execSync } from 'node:child_process';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
+
+declare const module: any;
 
 function runPrismaMigrations() {
 	console.log('Checking and applying Prisma migrations...');
@@ -52,5 +51,10 @@ async function bootstrap() {
 	await app.startAllMicroservices();
 	await app.listen(port);
 	console.log(`Application is running on: ${await app.getUrl()}`);
+
+	if (module.hot) {
+		module.hot.accept();
+		module.hot.dispose(() => app.close());
+	}
 }
 bootstrap();

@@ -26,8 +26,10 @@ services:
       - DATABASE_URL=mysql://root:root@mysql:3306/ecommerce
       - PORT=3000
     depends_on:
-      - mysql
-      - kafka
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started # Default, but explicit for clarity
 
   mysql:
     image: mysql:5.7
@@ -40,6 +42,12 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./db_init:/docker-entrypoint-initdb.d
+    healthcheck:
+      # Este comando verifica se o servidor MySQL está pronto para aceitar conexões.
+      test: [ 'CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-p$$MYSQL_ROOT_PASSWORD' ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   zookeeper:
     image: "confluentinc/cp-zookeeper:6.1.0"
