@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { PrismaService } from '@database/prisma.service';
 import Purchase from '@modules/purchase/entity/purchase.entity';
 import {
@@ -11,6 +12,8 @@ import {
 	PurchaseProductUsecaseInputDTO,
 	PurchaseProductUsecaseOutputDTO,
 } from './purchase_product.usecase.dto';
+import { Inject, Logger } from '@nestjs/common';
+import { ClientKafka } from '@nestjs/microservices';
 
 export class PurchaseProductUsecase
 	implements
@@ -19,12 +22,17 @@ export class PurchaseProductUsecase
 			Result<PurchaseProductUsecaseOutputDTO, DomainError>
 		>
 {
-	constructor(private prisma: PrismaService) {}
+	private readonly logger = new Logger(PurchaseProductUsecase.name);
+
+	constructor(
+		private databaseService: PrismaService,
+		@Inject('KAFKA_PRODUCER') private readonly kafkaClient: ClientKafka,
+	) {}
 
 	async execute(
 		input: PurchaseProductUsecaseInputDTO,
 	): Promise<Result<PurchaseProductUsecaseOutputDTO, DomainError>> {
-		const buyer = await this.prisma.user.findUnique({
+		const buyer = await this.databaseService.user.findUnique({
 			where: {
 				id: input.buyerId,
 			},
@@ -34,7 +42,7 @@ export class PurchaseProductUsecase
 			return failure(new NotFoundError('Buyer'));
 		}
 
-		const seller = await this.prisma.user.findUnique({
+		const seller = await this.databaseService.user.findUnique({
 			where: {
 				id: input.sellerId,
 			},
@@ -44,7 +52,7 @@ export class PurchaseProductUsecase
 			return failure(new NotFoundError('Seller'));
 		}
 
-		const product = await this.prisma.product.findUnique({
+		const product = await this.databaseService.product.findUnique({
 			where: {
 				id: input.productId,
 			},
@@ -69,13 +77,22 @@ export class PurchaseProductUsecase
 		);
 
 		try {
-			const createdPurchase = await this.prisma.purchase.create({
+			const createdPurchase = await this.databaseService.purchase.create({
 				data: {
 					id: purchase.id,
 					buyerId: purchase.buyerId,
 					sellerId: purchase.sellerId,
 					productId: purchase.productId,
 					price: purchase.price,
+				},
+			});
+
+			this.kafkaClient.emit('product_purchased', createdPurchase).subscribe({
+				error: (err) => {
+					this.logger.error(
+						`Feiled to emit product_purchased evento for ${createdPurchase.id}`,
+						err.stack,
+					);
 				},
 			});
 

@@ -3,6 +3,7 @@ import { ProductService } from './product.service';
 import { ProductController } from './product.controller';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { RegisterProductUsecase } from '@modules/product/usecases/register_product/register_product.usecase';
+import { ListAllProductsUsecase } from '@modules/product/usecases/list_all/list_all.usecase';
 
 @Module({
 	imports: [
@@ -23,6 +24,6 @@ import { RegisterProductUsecase } from '@modules/product/usecases/register_produ
 		]),
 	],
 	controllers: [ProductController],
-	providers: [ProductService, RegisterProductUsecase],
+	providers: [ListAllProductsUsecase, RegisterProductUsecase, ProductService],
 })
 export class ProductModule {}

@@ -5,12 +5,13 @@ import {
 } from './create_user.usecase.dto';
 import { PrismaService } from '@database/prisma.service';
 import User from '@modules/user/entity/user.entity';
-import { Inject, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import UseCaseInterface from '@shared/usecase/usecase.interface';
 import { failure, Result, success } from '@shared/result/result';
 import { ConflictError, DomainError } from '@shared/errors/domain_errors';
 
+@Injectable()
 export class CreateUserUsecase
 	implements
 		UseCaseInterface<

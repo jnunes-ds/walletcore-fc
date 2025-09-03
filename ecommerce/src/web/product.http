@@ -8,10 +8,10 @@ POST localhost:3001/products
 Content-Type: application/json
 
 {
-  "name": "Guitarra",
-  "price": 139.99,
+  "name": "Paleta de guitarra",
+  "price": 13.99,
   "description": "A description of the new product",
-  "sellerId": "936d31c0-345c-4ceb-87cb-65a577c37d6d"
+  "sellerId": "ba286c33-8b41-49ca-a305-91c5802ad873"
 }
 
 ###

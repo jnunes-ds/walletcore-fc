@@ -10,8 +10,10 @@ export class DomainError extends Error {
 }
 
 export class NotFoundError extends DomainError {
+	message: string;
 	constructor(resource: string) {
 		super(`${resource} not found`);
+		this.message = `${resource} not found`;
 	}
 }
 

@@ -4,6 +4,6 @@ export type ListAllProductsUsecaseOutputDTO = {
 	id: string;
 	name: string;
 	price: number;
-	description: string;
+	description: string | null;
 	sellerId: string;
 }[];

@@ -5,7 +5,7 @@ import {
 } from './register_product.usecase.dto';
 import { PrismaService } from '@database/prisma.service';
 import Product from '@modules/product/entity/product.entity';
-import { Inject, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import UseCaseInterface from '@shared/usecase/usecase.interface';
 import { failure, Result, success } from '@shared/result/result';
@@ -15,6 +15,7 @@ import {
 	NotFoundError,
 } from '@shared/errors/domain_errors';
 
+@Injectable()
 export class RegisterProductUsecase
 	implements
 		UseCaseInterface<
@@ -59,10 +60,10 @@ export class RegisterProductUsecase
 				data: { ...product },
 			});
 
-			this.kafkaClient.emit('product_created', productCreated).subscribe({
+			this.kafkaClient.emit('product_registered', productCreated).subscribe({
 				error: (err) => {
 					this.logger.error(
-						`Failed to emit product_created event for product ${productCreated.id}.`,
+						`Failed to emit product_registered event for product ${productCreated.id}.`,
 						err.stack,
 					);
 				},
@@ -74,7 +75,7 @@ export class RegisterProductUsecase
 				`Unexpected error while registering product: ${error.message}`,
 				error.stack,
 			);
-			throw error;
+			return failure(error);
 		}
 	}
 }
