@@ -5,15 +5,13 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
+import { Kafka } from 'kafkajs';
 
 declare const module: any;
 
 function runPrismaMigrations() {
 	console.log('Checking and applying Prisma migrations...');
 	try {
-		// Para prototipagem e desenvolvimento local, `db push` é mais simples.
-		// Ele sincroniza o schema com o banco de dados sem criar arquivos de migração.
-		// Isso evita a complexidade do shadow database e é totalmente não-interativo.
 		execSync('npx prisma db push', { stdio: 'inherit' });
 		execSync('npx prisma db seed', { stdio: 'inherit' });
 		console.log('Prisma migrations applied successfully.');
@@ -23,17 +21,43 @@ function runPrismaMigrations() {
 	}
 }
 
+async function ensureKafkaTopics(brokers: string[]) {
+	console.log('Connecting to Kafka to ensure topics exist...');
+	const kafka = new Kafka({
+		clientId: 'kafka-topic-creator',
+		brokers,
+	});
+	const admin = kafka.admin();
+	try {
+		await admin.connect();
+		console.log('Kafka Admin connected. Creating topics...');
+		await admin.createTopics({
+			waitForLeaders: true,
+			topics: [{ topic: 'user_created' }],
+		});
+		console.log('Topic "user_created" is ready.');
+	} catch (error) {
+		console.error('Failed to create Kafka topics:', error);
+		process.exit(1);
+	} finally {
+		await admin.disconnect();
+		console.log('Kafka Admin disconnected.');
+	}
+}
+
 async function bootstrap() {
 	runPrismaMigrations();
+
+	const brokers = ['kafka:29092'];
+	await ensureKafkaTopics(brokers);
+
 	const app = await NestFactory.create(AppModule);
 
-	// Conecta o microserviço Kafka à aplicação principal
 	app.connectMicroservice<MicroserviceOptions>({
 		transport: Transport.KAFKA,
 		options: {
 			client: {
-				brokers: ['kafka:29092'],
-				// Adiciona lógica de retry para tornar a conexão mais robusta
+				brokers,
 				retry: {
 					initialRetryTime: 300,
 					retries: 8,

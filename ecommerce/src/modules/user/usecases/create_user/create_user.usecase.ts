@@ -5,7 +5,7 @@ import {
 } from './create_user.usecase.dto';
 import { PrismaService } from '@database/prisma.service';
 import User from '@modules/user/entity/user.entity';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import UseCaseInterface from '@shared/usecase/usecase.interface';
 import { failure, Result, success } from '@shared/result/result';
@@ -17,7 +17,8 @@ export class CreateUserUsecase
 		UseCaseInterface<
 			ICreateUserInputDTO,
 			Result<ICreateUserOtuputDTO, DomainError>
-		>
+		>,
+		OnModuleInit
 {
 	private readonly logger = new Logger(CreateUserUsecase.name);
 
@@ -25,6 +26,10 @@ export class CreateUserUsecase
 		private readonly databaseService: PrismaService,
 		@Inject('KAFKA_PRODUCER') private readonly kafkaClient: ClientKafka,
 	) {}
+
+	async onModuleInit() {
+		await this.kafkaClient.connect();
+	}
 
 	async execute(
 		input: ICreateUserInputDTO,
