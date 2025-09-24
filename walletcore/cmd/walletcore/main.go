@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"strings"
 
 	ckafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	_ "github.com/go-sql-driver/mysql"
@@ -24,12 +25,10 @@ import (
 )
 
 func createTables(db *sql.DB) error {
-	// Usamos uma transação para garantir que todas as tabelas sejam criadas ou nenhuma seja.
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback() // Desfaz em caso de erro.
 
 	// Tabela de Clientes
 	_, err = tx.Exec(`
@@ -41,6 +40,7 @@ func createTables(db *sql.DB) error {
 		);
 	`)
 	if err != nil {
+		tx.Rollback()
 		return fmt.Errorf("failed to create clients table: %w", err)
 	}
 
@@ -55,6 +55,7 @@ func createTables(db *sql.DB) error {
 		);
 	`)
 	if err != nil {
+		tx.Rollback()
 		return fmt.Errorf("failed to create accounts table: %w", err)
 	}
 
@@ -71,10 +72,16 @@ func createTables(db *sql.DB) error {
 		);
 	`)
 	if err != nil {
+		tx.Rollback()
 		return fmt.Errorf("failed to create transactions table: %w", err)
 	}
 
-	return tx.Commit() // Confirma a transação se tudo correu bem.
+	// Confirma a transação se tudo correu bem.
+	if err := tx.Commit(); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return nil
 }
 
 func main() {
@@ -87,8 +94,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Cannot parse DATABASE_URL: %v", err)
 	}
+
+	// Extrai o nome do banco de dados do path da URL para garantir que ele seja usado.
+	dbName := strings.TrimPrefix(parsedURL.Path, "/")
+	if dbName == "" {
+		log.Fatal("Database name not found in DATABASE_URL path. e.g., mysql://user:pass@host:port/dbname")
+	}
+
 	password, _ := parsedURL.User.Password()
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)%s?charset=utf8&parseTime=true&loc=Local", parsedURL.User.Username(), password, parsedURL.Host, parsedURL.Path)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8&parseTime=true&loc=Local", parsedURL.User.Username(), password, parsedURL.Host, dbName)
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -110,8 +124,13 @@ func main() {
 
 	eventDispatcher := events.NewEventDispatcher()
 	transactionCreatedEvent := event.NewTransactionCreated()
+	balanceUpdateddEvent := event.NewBalanceUpdated()
+	userCreatedEvent := event.NewUserCreated()
+
 	eventDispatcher.Register(transactionCreatedEvent.GetName(), handler.NewTransactionCreatedKafkaHandler(kafkaProducer))
-	eventDispatcher.Register("BalanceUpdated", handler.NewUpdateBalanceKafkaHandler(kafkaProducer))
+	eventDispatcher.Register(balanceUpdateddEvent.GetName(), handler.NewUpdateBalanceKafkaHandler(kafkaProducer))
+	eventDispatcher.Register(userCreatedEvent.GetName(), handler.NewUserCreatedKafkaHandler(kafkaProducer))
+
 	balanceUpdatedEvent := event.NewBalanceUpdated()
 	//eventDispatcher.Register("TransactionCreated", handler)
 
@@ -123,11 +142,11 @@ func main() {
 
 	// 3. CORREÇÃO: Registra os repositórios para usar a transação (tx) em vez da conexão global (db).
 	uow.Register("AccountDB", func(tx *sql.Tx) interface{} {
-		return database.NewAccountDB(db)
+		return database.NewAccountDB(tx)
 	})
 
 	uow.Register("TransactionDB", func(tx *sql.Tx) interface{} {
-		return database.NewTransactionDB(db)
+		return database.NewTransactionDB(tx)
 	})
 
 	createClientUseCase := create_client.NewCreateClientUsecase(clientDb)

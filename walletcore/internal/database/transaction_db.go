@@ -1,22 +1,23 @@
 package database
 
 import (
-	"database/sql"
+	"context"
+
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
 )
 
 type TransactionDB struct {
-	DB *sql.DB
+	DB DBTX
 }
 
-func NewTransactionDB(db *sql.DB) *TransactionDB {
+func NewTransactionDB(db DBTX) *TransactionDB {
 	return &TransactionDB{
 		DB: db,
 	}
 }
 
-func (t *TransactionDB) Create(transaction *entity.Transaction) error {
-	stmt, err := t.DB.Prepare("INSERT INTO transactions (id, account_id_from, account_id_to, amount, created_at) VALUES (?, ?, ?, ?, ?)")
+func (t *TransactionDB) Create(ctx context.Context, transaction *entity.Transaction) error {
+	stmt, err := t.DB.PrepareContext(ctx, "INSERT INTO transactions (id, account_id_from, account_id_to, amount, created_at) VALUES (?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}

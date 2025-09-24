@@ -2,6 +2,7 @@ services:
   goapp:
     build: ./walletcore
     platform: linux/amd64
+    command: go run cmd/walletcore/main.go
     volumes:
       - ./walletcore:/app
     ports:
@@ -30,7 +31,6 @@ services:
         condition: service_healthy
       kafka:
         condition: service_started # Default, but explicit for clarity
-
   mysql:
     image: mysql:5.7
     platform: linux/amd64

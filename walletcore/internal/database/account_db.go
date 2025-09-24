@@ -1,15 +1,21 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
 )
 
-type AccountDB struct {
-	DB *sql.DB
+type DBTX interface {
+	Prepare(query string) (*sql.Stmt, error)
+	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
 }
 
-func NewAccountDB(db *sql.DB) *AccountDB {
+type AccountDB struct {
+	DB DBTX
+}
+
+func NewAccountDB(db DBTX) *AccountDB {
 	return &AccountDB{
 		DB: db,
 	}
