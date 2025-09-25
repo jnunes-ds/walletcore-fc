@@ -1,93 +1,120 @@
-import { PrismaClient } from '@prisma/client';
 import { faker } from '@faker-js/faker';
-
-const prisma = new PrismaClient();
+import { CreateUserUsecase } from '@modules/user/usecases/create_user/create_user.usecase';
+import { RegisterProductUsecase } from '@modules/product/usecases/register_product/register_product.usecase';
+import { PurchaseProductUsecase } from '@modules/purchase/usecases/purchase_product/purchase_product.usecase';
+import { PrismaService } from '@database/prisma.service';
+import { ClientKafka } from '@nestjs/microservices';
+import { IRegisterProductUsecaseOutputDTO } from '@modules/product/usecases/register_product/register_product.usecase.dto';
+import { ICreateUserOtuputDTO } from '@modules/user/usecases/create_user/create_user.usecase.dto';
 
 async function main() {
 	console.log('Start seeding...');
 
-	// Limpa o banco de dados na ordem inversa das dependências para evitar erros de chave estrangeira
-	await prisma.purchase.deleteMany();
-	await prisma.product.deleteMany();
-	await prisma.user.deleteMany();
+	// O construtor de ClientKafka espera apenas as opções, não o objeto de configuração completo.
+	const kafkaClient = new ClientKafka({
+		client: {
+			clientId: 'seeder',
+			brokers: ['localhost:9092'], // Endereço do Kafka exposto no docker-compose
+		},
+		consumer: {
+			groupId: 'seeder-group',
+		},
+	});
 
+	await kafkaClient.connect();
+
+	const prismaService = new PrismaService();
+	await prismaService.$connect();
+
+	// Instancia os use cases com o cliente Kafka real
+	const createUserUsecase = new CreateUserUsecase(prismaService, kafkaClient);
+	const registerProductUsecase = new RegisterProductUsecase(
+		prismaService,
+		kafkaClient,
+	);
+	const purchaseProductUsecase = new PurchaseProductUsecase(
+		prismaService,
+		kafkaClient,
+	);
+
+	// Limpa o banco de dados
+	await prismaService.purchase.deleteMany();
+	await prismaService.product.deleteMany();
+	await prismaService.user.deleteMany();
 	console.log('Old data cleared.');
 
-	// Cria 10 usuários
-	const users = await Promise.all(
-		Array.from({ length: 10 }).map((_, i) =>
-			prisma.user.create({
-				data: {
-					id: faker.string.uuid(), // ERRO CORRIGIDO: Fornece um ID, pois não é autoincrementado
-					name: faker.person.fullName(),
-					email: faker.internet.email(),
-					isSeller: i < 5, // Define os 5 primeiros como vendedores
-					// ERRO CORRIGIDO: O campo 'password' foi removido, pois não existe no schema.prisma
-				},
-			}),
-		),
-	);
+	// Cria usuários
+	const users: ICreateUserOtuputDTO[] = [];
+	for (let i = 0; i < 10; i++) {
+		const userInput = {
+			name: faker.person.fullName(),
+			email: faker.internet.email(),
+			isSeller: i < 5,
+		};
+		const result = await createUserUsecase.execute(userInput);
+		if (result.isSuccess) {
+			users.push(result.value);
+		} else {
+			console.error('Failed to create user:', result.error.message);
+		}
+	}
 	console.log(`${users.length} users created.`);
 
 	const sellers = users.filter((u) => u.isSeller);
 	const buyers = users.filter((u) => !u.isSeller);
 
-	// Cria produtos para cada vendedor
-	const productPromises = sellers.flatMap((seller) =>
-		Array.from({ length: 3 }).map(() =>
-			prisma.product.create({
-				data: {
-					id: faker.string.uuid(), // ERRO CORRIGIDO: Fornece um ID para o produto
-					name: faker.commerce.productName(),
-					description: faker.commerce.productDescription(),
-					price: parseFloat(faker.commerce.price({ min: 10, max: 200 })),
-					seller: {
-						connect: { id: seller.id },
-					},
-				},
-			}),
-		),
-	);
-	const allProducts = await Promise.all(productPromises);
+	// Cria produtos
+	const allProducts: IRegisterProductUsecaseOutputDTO[] = [];
+	for (const seller of sellers) {
+		for (let i = 0; i < 3; i++) {
+			const productInput = {
+				name: faker.commerce.productName(),
+				description: faker.commerce.productDescription(),
+				price: parseFloat(faker.commerce.price({ min: 10, max: 200 })),
+				sellerId: seller.id,
+			};
+			const result = await registerProductUsecase.execute(productInput);
+			if (result.isSuccess) {
+				allProducts.push(result.value);
+			} else {
+				console.error('Failed to create product:', result.error.message);
+			}
+		}
+	}
 	console.log(`${allProducts.length} products created.`);
 
 	// Cria compras
-	// Cada comprador compra um produto aleatório
 	if (allProducts.length > 0) {
-		const purchasePromises = buyers.map((buyer) => {
+		let purchasesCreatedCount = 0;
+		for (const buyer of buyers) {
 			const productToBuy =
 				allProducts[Math.floor(Math.random() * allProducts.length)];
 
-			return prisma.purchase.create({
-				data: {
-					id: faker.string.uuid(), // ERRO CORRIGIDO: Fornece um ID para a compra
-					price: productToBuy.price, // Grava o preço no momento da compra
-					buyer: {
-						connect: { id: buyer.id },
-					},
-					seller: {
-						connect: { id: productToBuy.sellerId },
-					},
-					// ERRO CORRIGIDO: A relação é com um único 'product', não 'products'
-					product: {
-						connect: { id: productToBuy.id },
-					},
-				},
-			});
-		});
-		await Promise.all(purchasePromises);
-		console.log(`${buyers.length} purchases created.`);
+			if (productToBuy.sellerId !== buyer.id) {
+				const purchaseInput = {
+					buyerId: buyer.id,
+					sellerId: productToBuy.sellerId,
+					productId: productToBuy.id,
+				};
+				const result = await purchaseProductUsecase.execute(purchaseInput);
+				if (result.isSuccess) {
+					purchasesCreatedCount++;
+				} else {
+					console.error('Failed to create purchase:', result.error.message);
+				}
+			}
+		}
+		console.log(`${purchasesCreatedCount} purchases created.`);
 	}
 
 	console.log('Seeding finished.');
+
+	// Fecha as conexões no final
+	await kafkaClient.close();
+	await prismaService.$disconnect();
 }
 
-main()
-	.catch((e) => {
-		console.error(e);
-		process.exit(1);
-	})
-	// eslint-disable-next-line @typescript-eslint/no-misused-promises
-	.finally(async () => {
-		await prisma.$disconnect();
-	});
+main().catch((e) => {
+	console.error(e);
+	process.exit(1);
+});
