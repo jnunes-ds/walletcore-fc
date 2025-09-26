@@ -26,7 +26,7 @@
     "db:setup": "npm run db:reset && echo 'Waiting for database to start...' && sleep 15 && npm run db:migrate && npm run db:seed"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

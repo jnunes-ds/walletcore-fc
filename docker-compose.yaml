@@ -22,7 +22,7 @@ services:
     volumes:
       - ./ecommerce:/usr/src/app
       - /usr/src/app/node_modules
-    command: npm run start:dev
+    command: sh -c "npx prisma db push && npx prisma db seed && npm run start:dev"
     environment:
       - DATABASE_URL=mysql://root:root@mysql:3306/ecommerce
       - PORT=3000
@@ -30,7 +30,7 @@ services:
       mysql:
         condition: service_healthy
       kafka:
-        condition: service_started # Default, but explicit for clarity
+        condition: service_healthy
   mysql:
     image: mysql:5.7
     platform: linux/amd64
@@ -82,6 +82,11 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 100
       CONFLUENT_METRICS_ENABLE: 'false'
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
 
   #Confluent control center
   control-center:
