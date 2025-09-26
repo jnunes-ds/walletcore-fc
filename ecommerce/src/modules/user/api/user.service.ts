@@ -6,10 +6,12 @@ import { ConflictError } from '@shared/errors/domain_errors';
 @Injectable()
 export class UserService {
 	constructor(private readonly createUserUsecase: CreateUserUsecase) {}
+
 	async create(createUserDto: CreateUserDto) {
 		const result = await this.createUserUsecase.execute({
 			name: createUserDto.name,
 			email: createUserDto.email,
+			isSeller: createUserDto.isSeller,
 		});
 
 		if (!result.isSuccess) {

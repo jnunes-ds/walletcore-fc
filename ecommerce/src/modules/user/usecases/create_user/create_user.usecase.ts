@@ -42,7 +42,7 @@ export class CreateUserUsecase
 			return failure(new ConflictError('Email already in use'));
 		}
 
-		const user = new User(input.name, input.email);
+		const user = new User(input.name, input.email, input.isSeller);
 
 		try {
 			const userCreated = await this.databaseService.user.create({

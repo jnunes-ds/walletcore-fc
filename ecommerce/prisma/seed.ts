@@ -18,8 +18,6 @@ async function bootstrap() {
 	const registerProductUsecase = app.get(RegisterProductUsecase);
 	const purchaseProductUsecase = app.get(PurchaseProductUsecase);
 
-	// Limpa o banco de dados para garantir que o seed seja idempotente
-	// A ordem é importante para evitar erros de chave estrangeira
 	await prismaService.purchase.deleteMany();
 	await prismaService.product.deleteMany();
 	await prismaService.user.deleteMany();
@@ -27,6 +25,7 @@ async function bootstrap() {
 
 	// Cria usuários
 	const users: ICreateUserOtuputDTO[] = [];
+	console.log('--- Creating Users ---');
 	for (let i = 0; i < 10; i++) {
 		const userInput = {
 			name: faker.person.fullName(),
@@ -35,18 +34,22 @@ async function bootstrap() {
 		};
 		const result = await createUserUsecase.execute(userInput);
 		if (result.isSuccess) {
+			console.log('User created:', result.value);
 			users.push(result.value);
 		} else {
-			console.error('Failed to create user:', result.error.message);
+			console.error('Failed to create user:', result.error);
 		}
 	}
-	console.log(`${users.length} users created.`);
+	console.log(`${users.length} total users created.`);
 
 	const sellers = users.filter((u) => u.isSeller);
 	const buyers = users.filter((u) => !u.isSeller);
+	console.log(`${sellers.length} sellers found.`);
+	console.log(`${buyers.length} buyers found.`);
 
 	// Cria produtos
 	const allProducts: IRegisterProductUsecaseOutputDTO[] = [];
+	console.log('--- Creating Products ---');
 	for (const seller of sellers) {
 		for (let i = 0; i < 3; i++) {
 			const productInput = {
@@ -59,14 +62,18 @@ async function bootstrap() {
 			if (result.isSuccess) {
 				allProducts.push(result.value);
 			} else {
-				console.error('Failed to create product:', result.error.message);
+				console.error(
+					`Failed to create product for seller ${seller.id}:`,
+					result.error,
+				);
 			}
 		}
 	}
-	console.log(`${allProducts.length} products created.`);
+	console.log(`${allProducts.length} total products created.`);
 
 	// Cria compras
 	if (allProducts.length > 0 && buyers.length > 0) {
+		console.log('--- Creating Purchases ---');
 		let purchasesCreatedCount = 0;
 		for (const buyer of buyers) {
 			const productToBuy =
@@ -82,11 +89,14 @@ async function bootstrap() {
 				if (result.isSuccess) {
 					purchasesCreatedCount++;
 				} else {
-					console.error('Failed to create purchase:', result.error.message);
+					console.error(
+						`Failed to create purchase for buyer ${buyer.id}:`,
+						result.error,
+					);
 				}
 			}
 		}
-		console.log(`${purchasesCreatedCount} purchases created.`);
+		console.log(`${purchasesCreatedCount} total purchases created.`);
 	}
 
 	console.log('Seeding finished.');

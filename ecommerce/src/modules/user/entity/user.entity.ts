@@ -7,12 +7,12 @@ export default class User extends Entity {
 	private _isSeller: boolean;
 	private _products: string[];
 
-	constructor(name: string, email: string) {
+	constructor(name: string, email: string, isSeller: boolean = false) {
 		super();
 		this._id = uuidv4();
 		this._name = name;
 		this._email = email;
-		this._isSeller = false;
+		this._isSeller = isSeller;
 		this._products = [];
 	}
 
