@@ -84,9 +84,10 @@ services:
       CONFLUENT_METRICS_ENABLE: 'false'
     healthcheck:
       test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
 
   #Confluent control center
   control-center:
