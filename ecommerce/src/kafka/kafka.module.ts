@@ -11,6 +11,10 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 				options: {
 					client: {
 						brokers: ['kafka:29092'],
+						retry: {
+							initialRetryTime: 3000,
+							retries: 10,
+						},
 					},
 					producer: {
 						allowAutoTopicCreation: true,
