@@ -19,10 +19,13 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 					producer: {
 						allowAutoTopicCreation: true,
 					},
+					consumer: {
+						groupId: 'ecommerce-seeder-client',
+					},
 				},
 			},
 		]),
 	],
-	exports: [ClientsModule], // Exporta o ClientsModule para tornar o provider disponível
+	exports: [ClientsModule],
 })
 export class KafkaModule {}

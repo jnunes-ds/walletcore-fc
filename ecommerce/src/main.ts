@@ -13,7 +13,6 @@ function runPrismaMigrations() {
 	console.log('Checking and applying Prisma migrations...');
 	try {
 		execSync('npx prisma db push', { stdio: 'inherit' });
-		execSync('npx prisma db seed', { stdio: 'inherit' });
 		console.log('Prisma migrations applied successfully.');
 	} catch (error) {
 		console.error('Failed to apply Prisma migrations:', error);
@@ -28,14 +27,23 @@ async function ensureKafkaTopics(brokers: string[]) {
 		brokers,
 	});
 	const admin = kafka.admin();
+	const topicsToCreate = [
+		'user_created',
+		'product_registered',
+		'product_purchased',
+	];
+
 	try {
 		await admin.connect();
 		console.log('Kafka Admin connected. Creating topics...');
 		await admin.createTopics({
 			waitForLeaders: true,
-			topics: [{ topic: 'user_created' }],
+			topics: topicsToCreate.map((topic) => ({
+				topic,
+				configEntries: [{ name: 'retention.ms', value: '-1' }], // Keep messages forever
+			})),
 		});
-		console.log('Topic "user_created" is ready.');
+		console.log(`Topics ${topicsToCreate.join(', ')} are ready.`);
 	} catch (error) {
 		console.error('Failed to create Kafka topics:', error);
 		process.exit(1);
@@ -81,4 +89,5 @@ async function bootstrap() {
 		module.hot.dispose(() => app.close());
 	}
 }
+
 bootstrap();

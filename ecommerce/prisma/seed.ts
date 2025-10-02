@@ -1,15 +1,56 @@
 import { faker } from '@faker-js/faker';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../src/app.module';
+import { SeederModule } from '../src/seeder.module';
 import { CreateUserUsecase } from '@modules/user/usecases/create_user/create_user.usecase';
 import { RegisterProductUsecase } from '@modules/product/usecases/register_product/register_product.usecase';
 import { PurchaseProductUsecase } from '@modules/purchase/usecases/purchase_product/purchase_product.usecase';
 import { PrismaService } from '@database/prisma.service';
 import { IRegisterProductUsecaseOutputDTO } from '@modules/product/usecases/register_product/register_product.usecase.dto';
 import { ICreateUserOtuputDTO } from '@modules/user/usecases/create_user/create_user.usecase.dto';
+import { Kafka } from 'kafkajs';
+
+async function ensureKafkaTopics(brokers: string[]) {
+	console.log('Seeder: Connecting to Kafka to ensure topics exist...');
+	const kafka = new Kafka({
+		clientId: 'kafka-seeder-topic-creator',
+		brokers,
+		retry: {
+			initialRetryTime: 3000,
+			retries: 10,
+		},
+	});
+	const admin = kafka.admin();
+	const topicsToCreate = [
+		'user_created',
+		'product_registered',
+		'product_purchased',
+	];
+
+	try {
+		await admin.connect();
+		console.log('Seeder: Kafka Admin connected. Ensuring topics...');
+		await admin.createTopics({
+			waitForLeaders: true,
+			topics: topicsToCreate.map((topic) => ({
+				topic,
+				configEntries: [{ name: 'retention.ms', value: '-1' }], // Keep messages forever
+			})),
+		});
+		console.log(`Seeder: Topics ${topicsToCreate.join(', ')} are ready.`);
+	} catch (error) {
+		console.error('Seeder: Failed to create Kafka topics:', error);
+		process.exit(1);
+	} finally {
+		await admin.disconnect();
+		console.log('Seeder: Kafka Admin disconnected.');
+	}
+}
 
 async function bootstrap() {
-	const app = await NestFactory.createApplicationContext(AppModule);
+	const brokers = ['kafka:29092'];
+	await ensureKafkaTopics(brokers);
+
+	const app = await NestFactory.createApplicationContext(SeederModule);
 
 	console.log('Start seeding...');
 
