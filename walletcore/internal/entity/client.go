@@ -33,7 +33,27 @@ func NewClient(name string, email string) (*Client, error) {
 	return client, nil
 }
 
+// NewClientWithID cria um novo cliente com um ID fornecido.
+func NewClientWithID(id, name, email string) (*Client, error) {
+	client := &Client{
+		ID:        id,
+		Name:      name,
+		Email:     email,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := client.Validade(); err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
 func (c *Client) Validade() error {
+	if c.ID == "" {
+		return errors.New("id is required")
+	}
 	if c.Name == "" {
 		return errors.New("name is required")
 	}

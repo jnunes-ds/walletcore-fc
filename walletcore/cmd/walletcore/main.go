@@ -132,7 +132,6 @@ func main() {
 	eventDispatcher.Register(userCreatedEvent.GetName(), handler.NewUserCreatedKafkaHandler(kafkaProducer))
 
 	balanceUpdatedEvent := event.NewBalanceUpdated()
-	//eventDispatcher.Register("TransactionCreated", handler)
 
 	clientDb := database.NewClientDB(db)
 	accountDb := database.NewAccountDB(db)
@@ -140,7 +139,6 @@ func main() {
 	ctx := context.Background()
 	uow := uow.NewUow(ctx, db)
 
-	// 3. CORREÇÃO: Registra os repositórios para usar a transação (tx) em vez da conexão global (db).
 	uow.Register("AccountDB", func(tx *sql.Tx) interface{} {
 		return database.NewAccountDB(tx)
 	})
@@ -153,6 +151,13 @@ func main() {
 	createAccountUseCase := create_account.NewCreateAccountUseCase(accountDb, clientDb)
 	createTransactionUseCase := create_transaction.NewCreateTransactionUseCase(uow, eventDispatcher, transactionCreatedEvent, balanceUpdatedEvent)
 
+	// Inicia um consumidor Kafka para logar eventos de múltiplos tópicos.
+	go func() {
+		logKafkaHandler := handler.NewLogKafkaHandler()
+		topics := []string{"user_created", "product_registered", "product_purchased"}
+		kafka.Consume(configMap, topics, logKafkaHandler)
+	}()
+
 	webserver := webserver.NewWebServer(":8080")
 
 	clientHandler := web.NewWebClientHandler(*createClientUseCase)
@@ -163,7 +168,6 @@ func main() {
 	webserver.AddHandler("/accounts", accountHandler.CreateAccount)
 	webserver.AddHandler("/transactions", transactionHandler.CreateTransaction)
 
-	// 4. Inicia o servidor web de forma bloqueante e trata o erro.
 	fmt.Println("Server is running")
 	if err := webserver.Start(); err != nil {
 		log.Fatalf("Could not start web server: %v", err)

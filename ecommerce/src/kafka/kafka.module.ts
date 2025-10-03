@@ -21,6 +21,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 					},
 					consumer: {
 						groupId: 'ecommerce-seeder-client',
+						fromBeginning: true,
 					},
 				},
 			},
