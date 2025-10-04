@@ -12,7 +12,7 @@ func NewLogKafkaHandler() *LogKafkaHandler {
 	return &LogKafkaHandler{}
 }
 
-// Handle processa a mensagem do Kafka, apenas registrando seu conteúdo no log.
-func (h *LogKafkaHandler) Handle(message []byte) {
-	log.Printf("Kafka message received: %s\n", string(message))
+// Handle processa a mensagem do Kafka, registrando seu conteúdo e o tópico no log.
+func (h *LogKafkaHandler) Handle(message []byte, topic string) {
+	log.Printf("Kafka message received - TOPIC (%s) - %s\n", topic, string(message))
 }

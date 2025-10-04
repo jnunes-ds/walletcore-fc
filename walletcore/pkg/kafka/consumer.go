@@ -8,7 +8,7 @@ import (
 
 // KafkaHandler define a interface para um manipulador de mensagens Kafka.
 type KafkaHandler interface {
-	Handle(message []byte)
+	Handle(message []byte, topic string)
 }
 
 // Consume inicia um consumidor Kafka e processa as mensagens usando o manipulador fornecido.
@@ -31,8 +31,8 @@ func Consume(configMap ckafka.ConfigMap, topics []string, handler KafkaHandler) 
 	for {
 		msg, err := consumer.ReadMessage(-1)
 		if err == nil {
-			// Passa o valor da mensagem para o manipulador.
-			handler.Handle(msg.Value)
+			// Passa o valor da mensagem e o tópico para o manipulador.
+			handler.Handle(msg.Value, *msg.TopicPartition.Topic)
 		} else {
 			// O cliente tentará se recuperar de erros automaticamente.
 			log.Printf("Consumer error: %v (%v)\n", err, msg)
