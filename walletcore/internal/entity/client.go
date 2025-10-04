@@ -9,9 +9,9 @@ import (
 
 type Client struct {
 	ID        string
+	UserId    string
 	Name      string
 	Email     string
-	UserId    string
 	Accounts  []*Account
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -20,9 +20,9 @@ type Client struct {
 func NewClient(name string, email string, userId string) (*Client, error) {
 	client := &Client{
 		ID:        uuid.New().String(),
+		UserId:    userId,
 		Name:      name,
 		Email:     email,
-		UserId:    userId,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -40,9 +40,9 @@ func NewClient(name string, email string, userId string) (*Client, error) {
 func NewClientWithID(id, name, email string, userId string) (*Client, error) {
 	client := &Client{
 		ID:        id,
+		UserId:    userId,
 		Name:      name,
 		Email:     email,
-		UserId:    userId,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -57,6 +57,9 @@ func NewClientWithID(id, name, email string, userId string) (*Client, error) {
 func (c *Client) Validade() error {
 	if c.ID == "" {
 		return errors.New("id is required")
+	}
+	if c.UserId == "" {
+		return errors.New("user_id is required")
 	}
 	if c.Name == "" {
 		return errors.New("name is required")
