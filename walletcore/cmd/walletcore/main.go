@@ -118,6 +118,7 @@ func main() {
 	configMap := ckafka.ConfigMap{
 		"bootstrap.servers": "kafka:29092",
 		"group.id":          "wallet",
+		"auto.offset.reset": "earliest",
 	}
 
 	kafkaProducer := kafka.NewKafkaProducer(&configMap)

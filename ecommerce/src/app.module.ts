@@ -6,7 +6,7 @@ import { ProductModule } from '@modules/product/api/product.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { KafkaModule } from './kafka/kafka.module';
-import { PurchaseProductUsecase } from '@modules/purchase/usecases/purchase_product/purchase_product.usecase'; // Caminho da importação corrigido
+import { PurchaseModule } from '@modules/purchase/api/purchase.module';
 
 @Module({
 	imports: [
@@ -14,7 +14,7 @@ import { PurchaseProductUsecase } from '@modules/purchase/usecases/purchase_prod
 		PrismaModule,
 		UserModule,
 		ProductModule,
-		PurchaseProductUsecase,
+		PurchaseModule,
 		KafkaModule, // Adiciona o KafkaModule global
 	],
 	controllers: [AppController],
