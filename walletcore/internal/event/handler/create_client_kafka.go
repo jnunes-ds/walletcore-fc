@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 
+	"github.com/jnunes-ds/walletcore-fc/internal/usecase/create_account"
 	"github.com/jnunes-ds/walletcore-fc/internal/usecase/create_client"
 )
 
@@ -14,21 +15,22 @@ type UserCreatedPayload struct {
 	Email string `json:"email"`
 }
 
-// CreateClientKafkaHandler manipula a criação de clientes a partir de mensagens do Kafka.
+// CreateClientKafkaHandler manipula a criação de clientes e suas contas a partir de mensagens do Kafka.
 type CreateClientKafkaHandler struct {
-	CreateClientUsecase *create_client.CreateClientUsecase
+	CreateClientUseCase  *create_client.CreateClientUsecase
+	CreateAccountUseCase *create_account.CreateAccountUseCase
 }
 
 // NewCreateClientKafkaHandler cria uma nova instância de CreateClientKafkaHandler.
-func NewCreateClientKafkaHandler(useCase *create_client.CreateClientUsecase) *CreateClientKafkaHandler {
+func NewCreateClientKafkaHandler(clientUseCase *create_client.CreateClientUsecase, accountUseCase *create_account.CreateAccountUseCase) *CreateClientKafkaHandler {
 	return &CreateClientKafkaHandler{
-		CreateClientUsecase: useCase,
+		CreateClientUseCase:  clientUseCase,
+		CreateAccountUseCase: accountUseCase,
 	}
 }
 
-// Handle processa a mensagem do Kafka para criar um novo cliente.
+// Handle processa a mensagem do Kafka para criar um novo cliente e sua conta.
 func (h *CreateClientKafkaHandler) Handle(message []byte, topic string) {
-
 	log.Printf("CreateClientKafkaHandler received message from topic: %s", topic)
 
 	// Decodifica o payload da mensagem.
@@ -39,14 +41,26 @@ func (h *CreateClientKafkaHandler) Handle(message []byte, topic string) {
 	}
 
 	// Prepara os dados para o caso de uso de criação de cliente.
-	input := create_client.CreateClientInputDTO{
-		UserId: payload.ID, // Usa o ID do evento como UserId do cliente.
+	clientInput := create_client.CreateClientInputDTO{
+		UserId: payload.ID,
 		Name:   payload.Name,
 		Email:  payload.Email,
 	}
 
 	// Executa o caso de uso para criar o cliente.
-	if _, err := h.CreateClientUsecase.Execute(input); err != nil {
+	clientOutput, err := h.CreateClientUseCase.Execute(clientInput)
+	if err != nil {
 		log.Printf("Error creating client from Kafka message: %v", err)
+		return
+	}
+
+	// Prepara os dados para o caso de uso de criação de conta.
+	accountInput := create_account.CreateAccountInputDTO{
+		ClientId: clientOutput.ID,
+	}
+
+	// Executa o caso de uso para criar a conta.
+	if _, err := h.CreateAccountUseCase.Execute(accountInput); err != nil {
+		log.Printf("Error creating account for client %s: %v", clientOutput.ID, err)
 	}
 }

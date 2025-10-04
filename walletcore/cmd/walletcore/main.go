@@ -183,7 +183,7 @@ func main() {
 	// Inicia um consumidor Kafka para logar e processar eventos de múltiplos tópicos.
 	go func() {
 		logKafkaHandler := handler.NewLogKafkaHandler()
-		createClientKafkaHandler := handler.NewCreateClientKafkaHandler(createClientUseCase)
+		createClientKafkaHandler := handler.NewCreateClientKafkaHandler(createClientUseCase, createAccountUseCase)
 		multiplexer := NewKafkaMultiplexer(logKafkaHandler, createClientKafkaHandler)
 		topics := []string{"user_created", "product_registered", "product_purchased"}
 		kafka.Consume(configMap, topics, multiplexer)
