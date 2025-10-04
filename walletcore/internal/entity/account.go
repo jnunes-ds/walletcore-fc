@@ -20,7 +20,7 @@ func NewAccount(client *Client) *Account {
 	account := &Account{
 		ID:        uuid.New().String(),
 		Client:    client,
-		Balance:   0.0,
+		Balance:   500.0, // Define o saldo inicial padrão como 500.
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
