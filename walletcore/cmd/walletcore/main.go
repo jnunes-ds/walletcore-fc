@@ -24,6 +24,33 @@ import (
 	"github.com/jnunes-ds/walletcore-fc/pkg/uow"
 )
 
+// KafkaMultiplexer é um manipulador que delega mensagens para outros manipuladores.
+type KafkaMultiplexer struct {
+	LogHandler          *handler.LogKafkaHandler
+	CreateClientHandler *handler.CreateClientKafkaHandler
+}
+
+// NewKafkaMultiplexer cria uma nova instância de KafkaMultiplexer.
+func NewKafkaMultiplexer(logHandler *handler.LogKafkaHandler, createClientHandler *handler.CreateClientKafkaHandler) *KafkaMultiplexer {
+	return &KafkaMultiplexer{
+		LogHandler:          logHandler,
+		CreateClientHandler: createClientHandler,
+	}
+}
+
+// Handle processa a mensagem, delegando para os manipuladores apropriados.
+func (m *KafkaMultiplexer) Handle(message []byte, topic string) {
+	// Todos os eventos são logados.
+	if m.LogHandler != nil {
+		m.LogHandler.Handle(message, topic)
+	}
+
+	// Eventos 'user_created' também são usados para criar clientes.
+	if topic == "user_created" && m.CreateClientHandler != nil {
+		m.CreateClientHandler.Handle(message, topic)
+	}
+}
+
 func createTables(db *sql.DB) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -36,6 +63,7 @@ func createTables(db *sql.DB) error {
 			id VARCHAR(255) PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
 			email VARCHAR(255) NOT NULL,
+			user_id VARCHAR(255) NULL,
 			created_at TIMESTAMP NOT NULL
 		);
 	`)
@@ -152,11 +180,13 @@ func main() {
 	createAccountUseCase := create_account.NewCreateAccountUseCase(accountDb, clientDb)
 	createTransactionUseCase := create_transaction.NewCreateTransactionUseCase(uow, eventDispatcher, transactionCreatedEvent, balanceUpdatedEvent)
 
-	// Inicia um consumidor Kafka para logar eventos de múltiplos tópicos.
+	// Inicia um consumidor Kafka para logar e processar eventos de múltiplos tópicos.
 	go func() {
 		logKafkaHandler := handler.NewLogKafkaHandler()
+		createClientKafkaHandler := handler.NewCreateClientKafkaHandler(createClientUseCase)
+		multiplexer := NewKafkaMultiplexer(logKafkaHandler, createClientKafkaHandler)
 		topics := []string{"user_created", "product_registered", "product_purchased"}
-		kafka.Consume(configMap, topics, logKafkaHandler)
+		kafka.Consume(configMap, topics, multiplexer)
 	}()
 
 	webserver := webserver.NewWebServer(":8080")

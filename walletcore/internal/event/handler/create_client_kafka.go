@@ -2,53 +2,51 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 
 	"github.com/jnunes-ds/walletcore-fc/internal/usecase/create_client"
 )
 
-// CreateClientKafkaHandler é responsável por manipular eventos de criação de cliente do Kafka.
+// UserCreatedPayload define a estrutura esperada para os dados do evento user_created.
+type UserCreatedPayload struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+// CreateClientKafkaHandler manipula a criação de clientes a partir de mensagens do Kafka.
 type CreateClientKafkaHandler struct {
-	CreateClientUseCase *create_client.CreateClientUsecase
+	CreateClientUsecase *create_client.CreateClientUsecase
 }
 
 // NewCreateClientKafkaHandler cria uma nova instância de CreateClientKafkaHandler.
-func NewCreateClientKafkaHandler(createClientUseCase *create_client.CreateClientUsecase) *CreateClientKafkaHandler {
+func NewCreateClientKafkaHandler(useCase *create_client.CreateClientUsecase) *CreateClientKafkaHandler {
 	return &CreateClientKafkaHandler{
-		CreateClientUseCase: createClientUseCase,
+		CreateClientUsecase: useCase,
 	}
 }
 
-// Handle processa a mensagem do Kafka, cria um novo cliente e o salva no banco de dados.
-func (h *CreateClientKafkaHandler) Handle(message []byte) {
-	// DTO para o payload do evento "user_created"
-	var dto struct {
-		Payload struct {
-			ID    string `json:"id"`
-			Name  string `json:"name"`
-			Email string `json:"email"`
-		} `json:"Payload"`
-	}
+// Handle processa a mensagem do Kafka para criar um novo cliente.
+func (h *CreateClientKafkaHandler) Handle(message []byte, topic string) {
 
-	// Faz o unmarshal da mensagem JSON
-	if err := json.Unmarshal(message, &dto); err != nil {
-		log.Printf("Error unmarshalling kafka message: %v", err)
+	log.Printf("CreateClientKafkaHandler received message from topic: %s", topic)
+
+	// Decodifica o payload da mensagem.
+	var payload UserCreatedPayload
+	if err := json.Unmarshal(message, &payload); err != nil {
+		log.Printf("Error unmarshalling user_created message: %v", err)
 		return
 	}
 
-	// Prepara o DTO de entrada para o caso de uso
-	inputDto := create_client.CreateClientInputDTO{
-		ID:    dto.Payload.ID,
-		Name:  dto.Payload.Name,
-		Email: dto.Payload.Email,
+	// Prepara os dados para o caso de uso de criação de cliente.
+	input := create_client.CreateClientInputDTO{
+		UserId: payload.ID, // Usa o ID do evento como UserId do cliente.
+		Name:   payload.Name,
+		Email:  payload.Email,
 	}
 
-	// Executa o caso de uso para criar o cliente
-	if _, err := h.CreateClientUseCase.Execute(inputDto); err != nil {
-		log.Printf("Error executing create client use case: %v", err)
-		return
+	// Executa o caso de uso para criar o cliente.
+	if _, err := h.CreateClientUsecase.Execute(input); err != nil {
+		log.Printf("Error creating client from Kafka message: %v", err)
 	}
-
-	fmt.Printf("Client created: %s (%s)\n", dto.Payload.Name, dto.Payload.Email)
 }

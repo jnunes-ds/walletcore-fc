@@ -10,14 +10,14 @@ import (
 // CreateClientInputDTO define o DTO para a criação de um cliente.
 type CreateClientInputDTO struct {
 	ID     string
-	UserId string
+	UserId string `json:"user_id"`
 	Name   string
 	Email  string
 }
 
 type CreateClientOutputDTO struct {
 	ID        string
-	UserId    string
+	UserId    string `json:"user_id"`
 	Name      string
 	Email     string
 	CreatedAt time.Time
