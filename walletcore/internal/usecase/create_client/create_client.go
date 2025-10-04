@@ -1,20 +1,23 @@
 package create_client
 
 import (
+	"time"
+
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
 	"github.com/jnunes-ds/walletcore-fc/internal/gateway"
-	"time"
 )
 
 // CreateClientInputDTO define o DTO para a criação de um cliente.
 type CreateClientInputDTO struct {
-	ID    string
-	Name  string
-	Email string
+	ID     string
+	UserId string
+	Name   string
+	Email  string
 }
 
 type CreateClientOutputDTO struct {
 	ID        string
+	UserId    string
 	Name      string
 	Email     string
 	CreatedAt time.Time
@@ -37,9 +40,9 @@ func (uc *CreateClientUsecase) Execute(input CreateClientInputDTO) (*CreateClien
 	var err error
 
 	if input.ID != "" {
-		client, err = entity.NewClientWithID(input.ID, input.Name, input.Email)
+		client, err = entity.NewClientWithID(input.ID, input.Name, input.Email, input.UserId)
 	} else {
-		client, err = entity.NewClient(input.Name, input.Email)
+		client, err = entity.NewClient(input.Name, input.Email, input.UserId)
 	}
 
 	if err != nil {
