@@ -49,6 +49,7 @@ export class CreateUserUsecase
 				data: {
 					id: user.id,
 					name: user.name,
+					balance: user.balance,
 					email: user.email,
 					isSeller: user.isSeller,
 				},
@@ -65,6 +66,7 @@ export class CreateUserUsecase
 			return success({
 				id: userCreated.id,
 				name: userCreated.name,
+				balance: userCreated.balance,
 				email: userCreated.email,
 				isSeller: userCreated.isSeller,
 			});

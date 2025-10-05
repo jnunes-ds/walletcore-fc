@@ -7,6 +7,7 @@ export interface ICreateUserInputDTO {
 export interface ICreateUserOtuputDTO {
 	id: string;
 	name: string;
+	balance: number;
 	email: string;
 	isSeller: boolean;
 }

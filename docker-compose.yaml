@@ -23,7 +23,7 @@ services:
     volumes:
       - ./ecommerce:/usr/src/app
       - /usr/src/app/node_modules
-    command: sh -c "npx prisma db push && npx prisma db seed && npm run start:dev"
+    command: sh -c "sleep 10 && npx prisma db push && npx prisma db seed && npm run start:dev"
     environment:
       - DATABASE_URL=mysql://root:root@mysql:3306/ecommerce
       - PORT=3000

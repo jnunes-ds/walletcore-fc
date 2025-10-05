@@ -10,6 +10,7 @@ datasource db {
 model User {
   id        String     @id @unique
   name      String
+  balance   Float      @default(0)
   email     String     @unique
   isSeller  Boolean    @default(false)
   products  Product[]  @relation("SellerProducts")
@@ -30,15 +31,15 @@ model Product {
 }
 
 model Purchase {
-  id       String    @id
-  buyerId  String
-  buyer    User      @relation("BuyerPurchases", fields: [buyerId], references: [id], onDelete: Restrict)
-  sellerId String
-  seller   User      @relation("SellerSales", fields: [sellerId], references: [id], onDelete: Restrict)
+  id        String   @id
+  buyerId   String
+  buyer     User     @relation("BuyerPurchases", fields: [buyerId], references: [id], onDelete: Restrict)
+  sellerId  String
+  seller    User     @relation("SellerSales", fields: [sellerId], references: [id], onDelete: Restrict)
   productId String
-  product   Product   @relation(fields: [productId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
   price     Float
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([buyerId])
   @@index([sellerId])

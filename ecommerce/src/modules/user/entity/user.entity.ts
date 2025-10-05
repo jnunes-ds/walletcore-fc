@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 export default class User extends Entity {
 	private _name: string;
 	private _email: string;
+	private _balance: number;
 	private _isSeller: boolean;
 	private _products: string[];
 
@@ -12,6 +13,7 @@ export default class User extends Entity {
 		this._id = uuidv4();
 		this._name = name;
 		this._email = email;
+		this._balance = 0;
 		this._isSeller = isSeller;
 		this._products = [];
 	}
@@ -28,6 +30,10 @@ export default class User extends Entity {
 		return this._isSeller;
 	}
 
+	get balance(): number {
+		return this._balance;
+	}
+
 	changeName(name: string) {
 		this._name = name;
 	}
@@ -39,6 +45,19 @@ export default class User extends Entity {
 	changeIsSeller(isSeller: boolean) {
 		this._isSeller = isSeller;
 	}
+
+	deposit(amount: number) {
+		if (amount <= 0) throw new Error('Invalid amount');
+		this._balance += amount;
+	}
+
+	withdraw(amount: number) {
+		if (this._balance < amount) {
+			throw new Error('Insufficient funds');
+		}
+		this._balance -= amount;
+	}
+
 	get products() {
 		return this._products;
 	}
