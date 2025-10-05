@@ -25,8 +25,8 @@ async function ensureKafkaTopics(brokers: string[]) {
 		'product_registered',
 		'product_purchased',
 		'account_created',
-		'balances', // Garante que o tópico de balanços seja criado.
-		'transactions', // Garante que o tópico de transações seja criado.
+		'balances',
+		'transaction_created', // Padroniza o nome do tópico.
 	];
 
 	try {

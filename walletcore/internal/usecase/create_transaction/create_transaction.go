@@ -2,25 +2,31 @@ package create_transaction
 
 import (
 	"context"
+
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
 	"github.com/jnunes-ds/walletcore-fc/internal/gateway"
 	"github.com/jnunes-ds/walletcore-fc/pkg/events"
 	"github.com/jnunes-ds/walletcore-fc/pkg/uow"
 )
 
+// CreateTransactionInputDTO é o DTO de entrada para a criação de transações.
 type CreateTransactionInputDTO struct {
 	AccountIdFrom string  `json:"account_id_from"`
 	AccountIdTo   string  `json:"account_id_to"`
 	Amount        float64 `json:"amount"`
 }
 
+// CreateTransactionOutputDTO é o DTO de saída, usado como payload do evento.
 type CreateTransactionOutputDTO struct {
 	ID            string  `json:"id"`
-	AccountIdFrom string  `json:"account_id_from"`
-	AccountIdTo   string  `json:"account_id_to"`
-	Ammount       float64 `json:"amount"`
+	AccountIDFrom string  `json:"account_id_from"`
+	AccountIDTo   string  `json:"account_id_to"`
+	UserIDFrom    string  `json:"user_id_from"`
+	UserIDTo      string  `json:"user_id_to"`
+	Amount        float64 `json:"amount"`
 }
 
+// BalanceUpdatedOutputDTO é o DTO para o evento de atualização de saldo.
 type BalanceUpdatedOutputDTO struct {
 	AccountIDFrom        string  `json:"account_id_from"`
 	AccountIDTo          string  `json:"account_id_to"`
@@ -28,6 +34,7 @@ type BalanceUpdatedOutputDTO struct {
 	BalanceAccountIDTo   float64 `json:"balance_account_id_to"`
 }
 
+// CreateTransactionUseCase define o caso de uso para criar uma transação.
 type CreateTransactionUseCase struct {
 	Uow                uow.UowInterface
 	EventDispatcher    events.EventDispatcherInterface
@@ -35,6 +42,7 @@ type CreateTransactionUseCase struct {
 	BalanceUpdated     events.EventInterface
 }
 
+// NewCreateTransactionUseCase cria uma nova instância do caso de uso.
 func NewCreateTransactionUseCase(
 	Uow uow.UowInterface,
 	eventDispatcher events.EventDispatcherInterface,
@@ -49,9 +57,11 @@ func NewCreateTransactionUseCase(
 	}
 }
 
+// Execute orquestra a criação da transação e o disparo de eventos.
 func (uc *CreateTransactionUseCase) Execute(ctx context.Context, input CreateTransactionInputDTO) (*CreateTransactionOutputDTO, error) {
 	output := &CreateTransactionOutputDTO{}
 	balanceUpdatedOutput := &BalanceUpdatedOutputDTO{}
+
 	err := uc.Uow.Do(ctx, func(_ *uow.Uow) error {
 		accountRepository := uc.getAccountRepository(ctx)
 		transactionRepository := uc.getTransactionRepository(ctx)
@@ -70,25 +80,25 @@ func (uc *CreateTransactionUseCase) Execute(ctx context.Context, input CreateTra
 			return err
 		}
 
-		err = accountRepository.UpdateBalance(accountFrom)
-		if err != nil {
+		if err = accountRepository.UpdateBalance(accountFrom); err != nil {
 			return err
 		}
 
-		err = accountRepository.UpdateBalance(accountTo)
-		if err != nil {
+		if err = accountRepository.UpdateBalance(accountTo); err != nil {
 			return err
 		}
 
-		err = transactionRepository.Create(transaction)
-		if err != nil {
+		if err = transactionRepository.Create(transaction); err != nil {
 			return err
 		}
 
+		// Preenche o DTO de saída com os IDs de usuário.
 		output.ID = transaction.ID
-		output.AccountIdFrom = input.AccountIdFrom
-		output.AccountIdTo = input.AccountIdTo
-		output.Ammount = input.Amount
+		output.AccountIDFrom = input.AccountIdFrom
+		output.AccountIDTo = input.AccountIdTo
+		output.UserIDFrom = accountFrom.Client.UserId
+		output.UserIDTo = accountTo.Client.UserId
+		output.Amount = input.Amount
 
 		balanceUpdatedOutput.AccountIDFrom = input.AccountIdFrom
 		balanceUpdatedOutput.AccountIDTo = input.AccountIdTo

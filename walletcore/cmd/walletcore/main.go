@@ -14,6 +14,7 @@ import (
 	"github.com/jnunes-ds/walletcore-fc/internal/database"
 	"github.com/jnunes-ds/walletcore-fc/internal/event"
 	"github.com/jnunes-ds/walletcore-fc/internal/event/handler"
+	"github.com/jnunes-ds/walletcore-fc/internal/gateway"
 	"github.com/jnunes-ds/walletcore-fc/internal/usecase/create_account"
 	"github.com/jnunes-ds/walletcore-fc/internal/usecase/create_client"
 	"github.com/jnunes-ds/walletcore-fc/internal/usecase/create_transaction"
@@ -179,7 +180,7 @@ func main() {
 	})
 
 	uow.Register("TransactionDB", func(tx *sql.Tx) interface{} {
-		return database.NewTransactionDB(tx)
+		return gateway.TransactionGateway(database.NewTransactionDB(tx))
 	})
 
 	createClientUseCase := create_client.NewCreateClientUsecase(clientDb)
@@ -194,7 +195,7 @@ func main() {
 
 		multiplexer := NewKafkaMultiplexer(logKafkaHandler, createClientKafkaHandler, createTransactionKafkaHandler)
 
-		topics := []string{"user_created", "product_registered", "product_purchased", "account_created"}
+		topics := []string{"user_created", "product_registered", "product_purchased", "account_created", "transaction_created"}
 		kafka.Consume(configMap, topics, multiplexer)
 	}()
 
