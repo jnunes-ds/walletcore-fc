@@ -159,10 +159,12 @@ func main() {
 	transactionCreatedEvent := event.NewTransactionCreated()
 	balanceUpdateddEvent := event.NewBalanceUpdated()
 	userCreatedEvent := event.NewUserCreated()
+	accountCreatedEvent := event.NewAccountCreated()
 
 	eventDispatcher.Register(transactionCreatedEvent.GetName(), handler.NewTransactionCreatedKafkaHandler(kafkaProducer))
 	eventDispatcher.Register(balanceUpdateddEvent.GetName(), handler.NewUpdateBalanceKafkaHandler(kafkaProducer))
 	eventDispatcher.Register(userCreatedEvent.GetName(), handler.NewUserCreatedKafkaHandler(kafkaProducer))
+	eventDispatcher.Register(accountCreatedEvent.GetName(), handler.NewAccountCreatedKafkaHandler(kafkaProducer))
 
 	balanceUpdatedEvent := event.NewBalanceUpdated()
 
@@ -187,12 +189,12 @@ func main() {
 	// Inicia um consumidor Kafka para logar e processar eventos de múltiplos tópicos.
 	go func() {
 		logKafkaHandler := handler.NewLogKafkaHandler()
-		createClientKafkaHandler := handler.NewCreateClientKafkaHandler(createClientUseCase, createAccountUseCase)
+		createClientKafkaHandler := handler.NewCreateClientKafkaHandler(createClientUseCase, createAccountUseCase, eventDispatcher, accountCreatedEvent)
 		createTransactionKafkaHandler := handler.NewCreateTransactionKafkaHandler(createTransactionUseCase, clientDb, accountDb)
 
 		multiplexer := NewKafkaMultiplexer(logKafkaHandler, createClientKafkaHandler, createTransactionKafkaHandler)
 
-		topics := []string{"user_created", "product_registered", "product_purchased"}
+		topics := []string{"user_created", "product_registered", "product_purchased", "account_created"}
 		kafka.Consume(configMap, topics, multiplexer)
 	}()
 

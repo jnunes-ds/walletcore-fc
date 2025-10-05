@@ -2,10 +2,9 @@ package handler
 
 import (
 	"fmt"
-	"sync"
-
 	"github.com/jnunes-ds/walletcore-fc/pkg/events"
 	"github.com/jnunes-ds/walletcore-fc/pkg/kafka"
+	"sync"
 )
 
 type UserCreatedKafkaHandler struct {
@@ -20,6 +19,6 @@ func NewUserCreatedKafkaHandler(kafka *kafka.Producer) *UserCreatedKafkaHandler 
 
 func (h *UserCreatedKafkaHandler) Handle(message events.EventInterface, wg *sync.WaitGroup) {
 	defer wg.Done()
-	h.Kafka.Publish(message, nil, "users")
-	fmt.Println("User Created Kafka Handler - Go App")
+	h.Kafka.Publish(message, nil, "user_created")
+	fmt.Println("UserCreatedKafkaHandler called")
 }

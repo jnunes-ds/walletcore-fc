@@ -24,6 +24,9 @@ async function ensureKafkaTopics(brokers: string[]) {
 		'user_created',
 		'product_registered',
 		'product_purchased',
+		'account_created',
+		'balances', // Garante que o tópico de balanços seja criado.
+		'transactions', // Garante que o tópico de transações seja criado.
 	];
 
 	try {
