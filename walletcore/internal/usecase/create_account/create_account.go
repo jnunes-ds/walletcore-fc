@@ -1,6 +1,8 @@
 package create_account
 
 import (
+	"time"
+
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
 	"github.com/jnunes-ds/walletcore-fc/internal/gateway"
 )
@@ -8,6 +10,15 @@ import (
 // CreateAccountInputDTO define o DTO para a entrada de criação de conta.
 type CreateAccountInputDTO struct {
 	ClientId string `json:"client_id"`
+}
+
+// AccountCreatedPayloadDTO é o payload para o evento AccountCreated.
+type AccountCreatedPayloadDTO struct {
+	ID        string    `json:"id"`
+	ClientID  string    `json:"client_id"`
+	UserID    string    `json:"user_id"`
+	Balance   float64   `json:"balance"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // CreateAccountUseCase define o caso de uso para criação de conta.

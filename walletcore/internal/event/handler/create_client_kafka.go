@@ -21,6 +21,7 @@ type UserCreatedPayload struct {
 type AccountCreatedPayloadDTO struct {
 	ID        string    `json:"id"`
 	ClientID  string    `json:"client_id"`
+	UserID    string    `json:"user_id"`
 	Balance   float64   `json:"balance"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -80,10 +81,11 @@ func (h *CreateClientKafkaHandler) Handle(message []byte, topic string) {
 		return
 	}
 
-	// Dispara o evento de criação de conta.
+	// Dispara o evento de criação de conta com o UserID.
 	payloadDTO := AccountCreatedPayloadDTO{
 		ID:        account.ID,
 		ClientID:  account.Client.ID,
+		UserID:    account.Client.UserId,
 		Balance:   account.Balance,
 		CreatedAt: account.CreatedAt,
 	}
