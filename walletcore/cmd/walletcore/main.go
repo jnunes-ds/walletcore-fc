@@ -26,28 +26,32 @@ import (
 
 // KafkaMultiplexer é um manipulador que delega mensagens para outros manipuladores.
 type KafkaMultiplexer struct {
-	LogHandler          *handler.LogKafkaHandler
-	CreateClientHandler *handler.CreateClientKafkaHandler
+	LogHandler               *handler.LogKafkaHandler
+	CreateClientHandler      *handler.CreateClientKafkaHandler
+	CreateTransactionHandler *handler.CreateTransactionKafkaHandler
 }
 
 // NewKafkaMultiplexer cria uma nova instância de KafkaMultiplexer.
-func NewKafkaMultiplexer(logHandler *handler.LogKafkaHandler, createClientHandler *handler.CreateClientKafkaHandler) *KafkaMultiplexer {
+func NewKafkaMultiplexer(logHandler *handler.LogKafkaHandler, createClientHandler *handler.CreateClientKafkaHandler, createTransactionHandler *handler.CreateTransactionKafkaHandler) *KafkaMultiplexer {
 	return &KafkaMultiplexer{
-		LogHandler:          logHandler,
-		CreateClientHandler: createClientHandler,
+		LogHandler:               logHandler,
+		CreateClientHandler:      createClientHandler,
+		CreateTransactionHandler: createTransactionHandler,
 	}
 }
 
 // Handle processa a mensagem, delegando para os manipuladores apropriados.
 func (m *KafkaMultiplexer) Handle(message []byte, topic string) {
-	// Todos os eventos são logados.
 	if m.LogHandler != nil {
 		m.LogHandler.Handle(message, topic)
 	}
 
-	// Eventos 'user_created' também são usados para criar clientes.
 	if topic == "user_created" && m.CreateClientHandler != nil {
 		m.CreateClientHandler.Handle(message, topic)
+	}
+
+	if topic == "product_purchased" && m.CreateTransactionHandler != nil {
+		m.CreateTransactionHandler.Handle(message, topic)
 	}
 }
 
@@ -184,7 +188,10 @@ func main() {
 	go func() {
 		logKafkaHandler := handler.NewLogKafkaHandler()
 		createClientKafkaHandler := handler.NewCreateClientKafkaHandler(createClientUseCase, createAccountUseCase)
-		multiplexer := NewKafkaMultiplexer(logKafkaHandler, createClientKafkaHandler)
+		createTransactionKafkaHandler := handler.NewCreateTransactionKafkaHandler(createTransactionUseCase, clientDb, accountDb)
+
+		multiplexer := NewKafkaMultiplexer(logKafkaHandler, createClientKafkaHandler, createTransactionKafkaHandler)
+
 		topics := []string{"user_created", "product_registered", "product_purchased"}
 		kafka.Consume(configMap, topics, multiplexer)
 	}()
