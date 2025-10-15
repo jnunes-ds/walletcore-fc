@@ -12,9 +12,10 @@ import (
 
 // UserCreatedPayload define a estrutura esperada para os dados do evento user_created.
 type UserCreatedPayload struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	ID      string  `json:"id"`
+	Name    string  `json:"name"`
+	Email   string  `json:"email"`
+	Balance float64 `json:"balance"`
 }
 
 // AccountCreatedPayloadDTO é o DTO para o payload do evento de criação de conta.
@@ -73,6 +74,7 @@ func (h *CreateClientKafkaHandler) Handle(message []byte, topic string) {
 
 	accountInput := create_account.CreateAccountInputDTO{
 		ClientId: clientOutput.ID,
+		Balance:  payload.Balance,
 	}
 
 	account, err := h.CreateAccountUseCase.Execute(accountInput)

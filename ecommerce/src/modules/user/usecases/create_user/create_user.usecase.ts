@@ -44,6 +44,10 @@ export class CreateUserUsecase
 
 		const user = new User(input.name, input.email, input.isSeller);
 
+		if (user.balance === 0) {
+			user.deposit(5000);
+		}
+
 		try {
 			const userCreated = await this.databaseService.user.create({
 				data: {
@@ -54,7 +58,16 @@ export class CreateUserUsecase
 					isSeller: user.isSeller,
 				},
 			});
-			this.kafkaClient.emit('user_created', userCreated).subscribe({
+
+			// Envia um DTO limpo para garantir a compatibilidade do payload
+			const eventPayload = {
+				id: userCreated.id,
+				name: userCreated.name,
+				email: userCreated.email,
+				balance: userCreated.balance,
+			};
+
+			this.kafkaClient.emit('user_created', eventPayload).subscribe({
 				error: (err) => {
 					this.logger.error(
 						`Failed to emit user_created event for user ${userCreated.id}.`,

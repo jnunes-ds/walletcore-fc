@@ -31,6 +31,7 @@ async function ensureKafkaTopics(brokers: string[]) {
 		'user_created',
 		'product_registered',
 		'product_purchased',
+		'account_created', // <-- Tópico adicionado aqui
 	];
 
 	try {

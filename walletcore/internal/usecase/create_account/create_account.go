@@ -9,7 +9,8 @@ import (
 
 // CreateAccountInputDTO define o DTO para a entrada de criação de conta.
 type CreateAccountInputDTO struct {
-	ClientId string `json:"client_id"`
+	ClientId string  `json:"client_id"`
+	Balance  float64 `json:"balance"`
 }
 
 // AccountCreatedPayloadDTO é o payload para o evento AccountCreated.
@@ -43,6 +44,7 @@ func (uc *CreateAccountUseCase) Execute(input CreateAccountInputDTO) (*entity.Ac
 	}
 
 	account := entity.NewAccount(client)
+	account.Balance = input.Balance
 	if err := uc.AccountGateway.Save(account); err != nil {
 		return nil, err
 	}
