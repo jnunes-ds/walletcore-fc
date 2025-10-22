@@ -2,6 +2,7 @@ services:
   goapp:
     build: ./walletcore
     platform: linux/amd64
+    command: go run cmd/walletcore/main.go
     volumes:
       - ./walletcore:/app
     ports:
@@ -10,6 +11,7 @@ services:
       - DATABASE_URL=mysql://root:root@mysql:3306/wallet
     depends_on:
       - mysql
+      - kafka
 
   nestjs-app:
     build:
@@ -21,13 +23,15 @@ services:
     volumes:
       - ./ecommerce:/usr/src/app
       - /usr/src/app/node_modules
-    command: npm run start:dev
+    command: sh -c "sleep 10 && npx prisma db push && npx prisma db seed && npm run start:dev"
     environment:
       - DATABASE_URL=mysql://root:root@mysql:3306/ecommerce
       - PORT=3000
     depends_on:
-      - mysql
-
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
   mysql:
     image: mysql:5.7
     platform: linux/amd64
@@ -37,8 +41,14 @@ services:
     ports:
       - "3307:3306" # Alterado para evitar conflito de porta
     volumes:
-      - ./.docker/mysql/data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
       - ./db_init:/docker-entrypoint-initdb.d
+    healthcheck:
+      # Este comando verifica se o servidor MySQL está pronto para aceitar conexões.
+      test: [ 'CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-p$$MYSQL_ROOT_PASSWORD' ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   zookeeper:
     image: "confluentinc/cp-zookeeper:6.1.0"
@@ -73,10 +83,16 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 100
       CONFLUENT_METRICS_ENABLE: 'false'
+    healthcheck:
+      test: [ "CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list" ]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
 
   #Confluent control center
   control-center:
-    image: confluentinc/cp-enterprise-control-center:7.3.0
+    image: confluentinc/cp-enterprise-control-center:6.1.0
     hostname: control-center
     container_name: control-center
     depends_on:
@@ -89,4 +105,8 @@ services:
       CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
       CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
       CONTROL_CENTER_METRICS_TOPIC_PARTITIONS: 1
+      CONTROL_CENTER_STREAMS_CONSUMER_AUTO_OFFSET_RESET: earliest
       PORT: 9021
+
+volumes:
+  mysql_data:

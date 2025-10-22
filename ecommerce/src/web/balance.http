@@ -1,0 +1,9 @@
+# Define a variável para o ID da conta que você quer consultar.
+# Altere este valor para testar diferentes contas.
+@account_id = 3dccbeed-94a2-481f-9615-1f59d576140f
+
+###
+
+# @name getBalance
+# A requisição abaixo usará o valor da variável @account_id definida acima.
+GET http://localhost:3001/user/balances/{{account_id}}

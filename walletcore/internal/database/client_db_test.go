@@ -2,10 +2,11 @@ package database
 
 import (
 	"database/sql"
+	"testing"
+
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type ClientDBTEstSuite struct {
@@ -18,7 +19,7 @@ func (s *ClientDBTEstSuite) SetupSuite() {
 	db, err := sql.Open("sqlite3", ":memory:")
 	s.Nil(err)
 	s.db = db
-	db.Exec("CREATE TABLE clients (id varchar(255), name varchar(255), email varchar(255), created_at date)")
+	db.Exec("CREATE TABLE clients (id varchar(255), user_id varchar(255), name varchar(255), email varchar(255), created_at date)")
 	s.clientDB = NewClientDB(db)
 }
 
@@ -32,13 +33,13 @@ func TestClientDBTestSuite(t *testing.T) {
 }
 
 func (s *ClientDBTEstSuite) TestSave() {
-	client, _ := entity.NewClient("Jhon", "jhon@email.com")
+	client, _ := entity.NewClient("Jhon", "jhon@email.com", "123")
 	err := s.clientDB.Save(client)
 	s.Nil(err)
 }
 
 func (s *ClientDBTEstSuite) TestGet() {
-	client, _ := entity.NewClient("Jhon", "jhon@email.com")
+	client, _ := entity.NewClient("Jhon", "jhon@email.com", "123")
 	s.clientDB.Save(client)
 
 	clientDB, err := s.clientDB.Get(client.ID)

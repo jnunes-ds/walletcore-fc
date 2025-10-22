@@ -1,0 +1,17 @@
+### GET
+GET localhost:3001/products
+
+###
+
+### POST
+POST localhost:3001/products
+Content-Type: application/json
+
+{
+  "name": "Violão raro",
+  "price": 1350.99,
+  "description": "A description of the new product",
+  "sellerId": "3d970a5b-c89b-4b25-be1a-3c4441babfd6"
+}
+
+###

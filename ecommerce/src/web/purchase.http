@@ -1,0 +1,14 @@
+### GET request to example server
+GET https://examples.http-client.intellij.net/get
+    ?generated-in=GoLand
+
+### POST
+
+POST localhost:3001/purchase
+Content-Type: application/json
+
+{
+  "productId": "8be6bd88-9088-4594-8eb5-2040c4b28e10",
+  "sellerId": "3d970a5b-c89b-4b25-be1a-3c4441babfd6",
+  "buyerId": "3dccbeed-94a2-481f-9615-1f59d576140f"
+}

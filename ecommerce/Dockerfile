@@ -17,6 +17,10 @@ WORKDIR /usr/src/app
 COPY --from=deps /usr/src/app/node_modules ./node_modules
 COPY . .
 
+# Gera o Prisma Client com base no schema.prisma copiado.
+# Isso é crucial para que o TypeScript e o runtime encontrem os tipos e o cliente.
+RUN npx prisma generate
+
 # Compila o código TypeScript para JavaScript
 RUN npm run build
 

@@ -1,20 +1,18 @@
-/*
-	eslint-disable @typescript-eslint/no-unsafe-assignment,
-	@typescript-eslint/no-unsafe-call,
-	@typescript-eslint/no-unsafe-member-access
-*/
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+
 import { execSync } from 'node:child_process';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
+import { Kafka } from 'kafkajs';
+
+declare const module: any;
 
 function runPrismaMigrations() {
 	console.log('Checking and applying Prisma migrations...');
 	try {
-		// `prisma migrate deploy` é o comando ideal para ambientes de produção/staging.
-		// Ele não gera novos arquivos de migração, apenas aplica os existentes.
-		execSync('npx prisma migrate deploy', { stdio: 'inherit' });
-		execSync('npx prisma db seed', { stdio: 'inherit' });
+		execSync('npx prisma db push', { stdio: 'inherit' });
 		console.log('Prisma migrations applied successfully.');
 	} catch (error) {
 		console.error('Failed to apply Prisma migrations:', error);
@@ -22,12 +20,77 @@ function runPrismaMigrations() {
 	}
 }
 
+async function ensureKafkaTopics(brokers: string[]) {
+	console.log('Connecting to Kafka to ensure topics exist...');
+	const kafka = new Kafka({
+		clientId: 'kafka-topic-creator',
+		brokers,
+	});
+	const admin = kafka.admin();
+	const topicsToCreate = [
+		'user_created',
+		'product_registered',
+		'product_purchased',
+		'account_created',
+		'transactions',
+	];
+
+	try {
+		await admin.connect();
+		console.log('Kafka Admin connected. Creating topics...');
+		await admin.createTopics({
+			waitForLeaders: true,
+			topics: topicsToCreate.map((topic) => ({
+				topic,
+				configEntries: [{ name: 'retention.ms', value: '-1' }], // Keep messages forever
+			})),
+		});
+		console.log(`Topics ${topicsToCreate.join(', ')} are ready.`);
+	} catch (error) {
+		console.error('Failed to create Kafka topics:', error);
+		process.exit(1);
+	} finally {
+		await admin.disconnect();
+		console.log('Kafka Admin disconnected.');
+	}
+}
+
 async function bootstrap() {
 	runPrismaMigrations();
+
+	const brokers = ['kafka:29092'];
+	await ensureKafkaTopics(brokers);
+
 	const app = await NestFactory.create(AppModule);
+
+	app.connectMicroservice<MicroserviceOptions>({
+		transport: Transport.KAFKA,
+		options: {
+			client: {
+				brokers,
+				retry: {
+					initialRetryTime: 300,
+					retries: 8,
+				},
+			},
+			consumer: {
+				groupId: 'ecommerce-consumer',
+			},
+		},
+	});
+
 	const configService = app.get(ConfigService);
 	const port = configService.get<number>('PORT') || 3000;
+
+	await app.startAllMicroservices();
 	await app.listen(port);
 	console.log(`Application is running on: ${await app.getUrl()}`);
+
+	if (module.hot) {
+		module.hot.accept();
+		module.hot.dispose(() => app.close());
+	}
 }
+
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 bootstrap();

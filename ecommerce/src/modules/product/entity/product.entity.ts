@@ -1,48 +1,25 @@
-// Crie uma entidade produto
-import Entity from "../../@shared/entity/entity.abstract";
+import { randomUUID } from 'node:crypto';
 
-export default class Product extends Entity {
-	private _name: string;
-	private _description: string;
-	private _price: number;
-	private _userId: string;
+interface IProductProps {
+	id?: string;
+	name: string;
+	description?: string;
+	price: number;
+	sellerId: string;
+}
 
-	constructor(id: string, name: string, description: string, price: number, userId: string) {
-		super();
-		this._id = id ?? Math.random().toString();
-		this._name = name;
-		this._description = description;
+export default class Product {
+	readonly id: string;
+	readonly name: string;
+	readonly description: string | null;
+	readonly price: number;
+	readonly sellerId: string;
 
-
-		this._price = price;
-		this._userId = userId;
-	}
-
-	get name(): string {
-		return this._name;
-	}
-
-	get description(): string {
-		return this._description;
-	}
-
-	get price(): number {
-		return this._price;
-	}
-
-	get userId(): string {
-		return this._userId;
-	}
-
-	changeName(name: string) {
-		this._name = name;
-	}
-
-	changeDescription(description: string) {
-		this._description = description;
-	}
-
-	changePrice(price: number) {
-		this._price = price;
+	constructor(props: IProductProps) {
+		this.id = props.id ?? randomUUID();
+		this.name = props.name;
+		this.description = props.description ?? null;
+		this.price = props.price;
+		this.sellerId = props.sellerId;
 	}
 }

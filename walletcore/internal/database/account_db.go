@@ -1,15 +1,22 @@
 package database
 
 import (
+	"context"
 	"database/sql"
+
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
 )
 
-type AccountDB struct {
-	DB *sql.DB
+type DBTX interface {
+	Prepare(query string) (*sql.Stmt, error)
+	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
 }
 
-func NewAccountDB(db *sql.DB) *AccountDB {
+type AccountDB struct {
+	DB DBTX
+}
+
+func NewAccountDB(db DBTX) *AccountDB {
 	return &AccountDB{
 		DB: db,
 	}
@@ -21,7 +28,7 @@ func (a *AccountDB) FindById(id string) (*entity.Account, error) {
 
 	account.Client = &client
 
-	stmt, err := a.DB.Prepare("SELECT a.id, a.client_id, a.balance, a.created_at, c.id, c.name, c.email, c.created_at FROM accounts a INNER JOIN  clients c ON a.client_id = c.id WHERE a.id = ?")
+	stmt, err := a.DB.Prepare("SELECT a.id, a.client_id, a.balance, a.created_at, c.id, c.name, c.email, c.user_id, c.created_at FROM accounts a INNER JOIN  clients c ON a.client_id = c.id WHERE a.id = ?")
 	if err != nil {
 		return nil, err
 	}
@@ -35,6 +42,35 @@ func (a *AccountDB) FindById(id string) (*entity.Account, error) {
 		&client.ID,
 		&client.Name,
 		&client.Email,
+		&client.UserId,
+		&client.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &account, nil
+}
+
+func (a *AccountDB) FindByClientID(clientID string) (*entity.Account, error) {
+	var account entity.Account
+	var client entity.Client
+	account.Client = &client
+
+	stmt, err := a.DB.Prepare("SELECT a.id, a.client_id, a.balance, a.created_at, c.id, c.name, c.email, c.user_id, c.created_at FROM accounts a INNER JOIN clients c ON a.client_id = c.id WHERE a.client_id = ?")
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+	row := stmt.QueryRow(clientID)
+	err = row.Scan(
+		&account.ID,
+		&account.Client.ID,
+		&account.Balance,
+		&account.CreatedAt,
+		&client.ID,
+		&client.Name,
+		&client.Email,
+		&client.UserId,
 		&client.CreatedAt,
 	)
 	if err != nil {

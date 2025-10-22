@@ -1,10 +1,11 @@
 package create_client
 
 import (
+	"testing"
+
 	"github.com/jnunes-ds/walletcore-fc/internal/entity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 type ClientGatewayMock struct {
@@ -27,8 +28,9 @@ func TestCreateClientUsecase_Execute(t *testing.T) {
 	uc := NewCreateClientUsecase(m)
 
 	output, err := uc.Execute(CreateClientInputDTO{
-		Name:  "John Doe",
-		Email: "jhon@email.com",
+		Name:   "John Doe",
+		Email:  "jhon@email.com",
+		UserId: "123",
 	})
 	assert.Nil(t, err)
 	assert.NotNil(t, output)

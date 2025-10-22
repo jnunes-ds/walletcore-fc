@@ -7,12 +7,14 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"strings"
 
 	ckafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jnunes-ds/walletcore-fc/internal/database"
 	"github.com/jnunes-ds/walletcore-fc/internal/event"
 	"github.com/jnunes-ds/walletcore-fc/internal/event/handler"
+	"github.com/jnunes-ds/walletcore-fc/internal/gateway"
 	"github.com/jnunes-ds/walletcore-fc/internal/usecase/create_account"
 	"github.com/jnunes-ds/walletcore-fc/internal/usecase/create_client"
 	"github.com/jnunes-ds/walletcore-fc/internal/usecase/create_transaction"
@@ -23,13 +25,42 @@ import (
 	"github.com/jnunes-ds/walletcore-fc/pkg/uow"
 )
 
+// KafkaMultiplexer é um manipulador que delega mensagens para outros manipuladores.
+type KafkaMultiplexer struct {
+	LogHandler               *handler.LogKafkaHandler
+	CreateClientHandler      *handler.CreateClientKafkaHandler
+	CreateTransactionHandler *handler.CreateTransactionKafkaHandler
+}
+
+// NewKafkaMultiplexer cria uma nova instância de KafkaMultiplexer.
+func NewKafkaMultiplexer(logHandler *handler.LogKafkaHandler, createClientHandler *handler.CreateClientKafkaHandler, createTransactionHandler *handler.CreateTransactionKafkaHandler) *KafkaMultiplexer {
+	return &KafkaMultiplexer{
+		LogHandler:               logHandler,
+		CreateClientHandler:      createClientHandler,
+		CreateTransactionHandler: createTransactionHandler,
+	}
+}
+
+// Handle processa a mensagem, delegando para os manipuladores apropriados.
+func (m *KafkaMultiplexer) Handle(message []byte, topic string) {
+	if m.LogHandler != nil {
+		m.LogHandler.Handle(message, topic)
+	}
+
+	if topic == "user_created" && m.CreateClientHandler != nil {
+		m.CreateClientHandler.Handle(message, topic)
+	}
+
+	if topic == "product_purchased" && m.CreateTransactionHandler != nil {
+		m.CreateTransactionHandler.Handle(message, topic)
+	}
+}
+
 func createTables(db *sql.DB) error {
-	// Usamos uma transação para garantir que todas as tabelas sejam criadas ou nenhuma seja.
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback() // Desfaz em caso de erro.
 
 	// Tabela de Clientes
 	_, err = tx.Exec(`
@@ -37,10 +68,12 @@ func createTables(db *sql.DB) error {
 			id VARCHAR(255) PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
 			email VARCHAR(255) NOT NULL,
+			user_id VARCHAR(255) NULL,
 			created_at TIMESTAMP NOT NULL
 		);
 	`)
 	if err != nil {
+		tx.Rollback()
 		return fmt.Errorf("failed to create clients table: %w", err)
 	}
 
@@ -55,6 +88,7 @@ func createTables(db *sql.DB) error {
 		);
 	`)
 	if err != nil {
+		tx.Rollback()
 		return fmt.Errorf("failed to create accounts table: %w", err)
 	}
 
@@ -71,10 +105,16 @@ func createTables(db *sql.DB) error {
 		);
 	`)
 	if err != nil {
+		tx.Rollback()
 		return fmt.Errorf("failed to create transactions table: %w", err)
 	}
 
-	return tx.Commit() // Confirma a transação se tudo correu bem.
+	// Confirma a transação se tudo correu bem.
+	if err := tx.Commit(); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return nil
 }
 
 func main() {
@@ -87,8 +127,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Cannot parse DATABASE_URL: %v", err)
 	}
+
+	// Extrai o nome do banco de dados do path da URL para garantir que ele seja usado.
+	dbName := strings.TrimPrefix(parsedURL.Path, "/")
+	if dbName == "" {
+		log.Fatal("Database name not found in DATABASE_URL path. e.g., mysql://user:pass@host:port/dbname")
+	}
+
 	password, _ := parsedURL.User.Password()
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)%s?charset=utf8&parseTime=true&loc=Local", parsedURL.User.Username(), password, parsedURL.Host, parsedURL.Path)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8&parseTime=true&loc=Local", parsedURL.User.Username(), password, parsedURL.Host, dbName)
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -104,16 +151,23 @@ func main() {
 	configMap := ckafka.ConfigMap{
 		"bootstrap.servers": "kafka:29092",
 		"group.id":          "wallet",
+		"auto.offset.reset": "earliest",
 	}
 
 	kafkaProducer := kafka.NewKafkaProducer(&configMap)
 
 	eventDispatcher := events.NewEventDispatcher()
 	transactionCreatedEvent := event.NewTransactionCreated()
+	balanceUpdateddEvent := event.NewBalanceUpdated()
+	userCreatedEvent := event.NewUserCreated()
+	accountCreatedEvent := event.NewAccountCreated()
+
 	eventDispatcher.Register(transactionCreatedEvent.GetName(), handler.NewTransactionCreatedKafkaHandler(kafkaProducer))
-	eventDispatcher.Register("BalanceUpdated", handler.NewUpdateBalanceKafkaHandler(kafkaProducer))
+	eventDispatcher.Register(balanceUpdateddEvent.GetName(), handler.NewUpdateBalanceKafkaHandler(kafkaProducer))
+	eventDispatcher.Register(userCreatedEvent.GetName(), handler.NewUserCreatedKafkaHandler(kafkaProducer))
+	eventDispatcher.Register(accountCreatedEvent.GetName(), handler.NewAccountCreatedKafkaHandler(kafkaProducer))
+
 	balanceUpdatedEvent := event.NewBalanceUpdated()
-	//eventDispatcher.Register("TransactionCreated", handler)
 
 	clientDb := database.NewClientDB(db)
 	accountDb := database.NewAccountDB(db)
@@ -121,18 +175,29 @@ func main() {
 	ctx := context.Background()
 	uow := uow.NewUow(ctx, db)
 
-	// 3. CORREÇÃO: Registra os repositórios para usar a transação (tx) em vez da conexão global (db).
 	uow.Register("AccountDB", func(tx *sql.Tx) interface{} {
-		return database.NewAccountDB(db)
+		return database.NewAccountDB(tx)
 	})
 
 	uow.Register("TransactionDB", func(tx *sql.Tx) interface{} {
-		return database.NewTransactionDB(db)
+		return gateway.TransactionGateway(database.NewTransactionDB(tx))
 	})
 
 	createClientUseCase := create_client.NewCreateClientUsecase(clientDb)
 	createAccountUseCase := create_account.NewCreateAccountUseCase(accountDb, clientDb)
 	createTransactionUseCase := create_transaction.NewCreateTransactionUseCase(uow, eventDispatcher, transactionCreatedEvent, balanceUpdatedEvent)
+
+	// Inicia um consumidor Kafka para logar e processar eventos de múltiplos tópicos.
+	go func() {
+		logKafkaHandler := handler.NewLogKafkaHandler()
+		createClientKafkaHandler := handler.NewCreateClientKafkaHandler(createClientUseCase, createAccountUseCase, eventDispatcher, accountCreatedEvent)
+		createTransactionKafkaHandler := handler.NewCreateTransactionKafkaHandler(createTransactionUseCase, clientDb, accountDb)
+
+		multiplexer := NewKafkaMultiplexer(logKafkaHandler, createClientKafkaHandler, createTransactionKafkaHandler)
+
+		topics := []string{"user_created", "product_registered", "product_purchased", "account_created", "transaction_created"}
+		kafka.Consume(configMap, topics, multiplexer)
+	}()
 
 	webserver := webserver.NewWebServer(":8080")
 
@@ -144,7 +209,6 @@ func main() {
 	webserver.AddHandler("/accounts", accountHandler.CreateAccount)
 	webserver.AddHandler("/transactions", transactionHandler.CreateTransaction)
 
-	// 4. Inicia o servidor web de forma bloqueante e trata o erro.
 	fmt.Println("Server is running")
 	if err := webserver.Start(); err != nil {
 		log.Fatalf("Could not start web server: %v", err)

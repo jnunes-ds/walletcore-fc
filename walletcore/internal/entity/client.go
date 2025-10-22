@@ -2,12 +2,14 @@ package entity
 
 import (
 	"errors"
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Client struct {
 	ID        string
+	UserId    string
 	Name      string
 	Email     string
 	Accounts  []*Account
@@ -15,9 +17,10 @@ type Client struct {
 	UpdatedAt time.Time
 }
 
-func NewClient(name string, email string) (*Client, error) {
+func NewClient(name string, email string, userId string) (*Client, error) {
 	client := &Client{
 		ID:        uuid.New().String(),
+		UserId:    userId,
 		Name:      name,
 		Email:     email,
 		CreatedAt: time.Now(),
@@ -33,7 +36,31 @@ func NewClient(name string, email string) (*Client, error) {
 	return client, nil
 }
 
+// NewClientWithID cria um novo cliente com um ID fornecido.
+func NewClientWithID(id, name, email string, userId string) (*Client, error) {
+	client := &Client{
+		ID:        id,
+		UserId:    userId,
+		Name:      name,
+		Email:     email,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := client.Validade(); err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
 func (c *Client) Validade() error {
+	if c.ID == "" {
+		return errors.New("id is required")
+	}
+	if c.UserId == "" {
+		return errors.New("user_id is required")
+	}
 	if c.Name == "" {
 		return errors.New("name is required")
 	}

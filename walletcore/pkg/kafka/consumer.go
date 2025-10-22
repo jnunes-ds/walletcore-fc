@@ -1,32 +1,41 @@
 package kafka
 
-import ckafka "github.com/confluentinc/confluent-kafka-go/kafka"
+import (
+	"log"
 
-type Consumer struct {
-	ConfigMap *ckafka.ConfigMap
-	Topics    []string
+	ckafka "github.com/confluentinc/confluent-kafka-go/kafka"
+)
+
+// KafkaHandler define a interface para um manipulador de mensagens Kafka.
+type KafkaHandler interface {
+	Handle(message []byte, topic string)
 }
 
-func NewConsumer(configMap *ckafka.ConfigMap, topics []string) *Consumer {
-	return &Consumer{
-		ConfigMap: configMap,
-		Topics:    topics,
+// Consume inicia um consumidor Kafka e processa as mensagens usando o manipulador fornecido.
+func Consume(configMap ckafka.ConfigMap, topics []string, handler KafkaHandler) {
+	// Cria um novo consumidor.
+	consumer, err := ckafka.NewConsumer(&configMap)
+	if err != nil {
+		log.Fatalf("Failed to create consumer: %v", err)
 	}
-}
+	defer consumer.Close()
 
-func (c *Consumer) Consume(msgChan chan *ckafka.Message) error {
-	consumer, err := ckafka.NewConsumer(c.ConfigMap)
-	if err != nil {
-		panic(err)
+	// Inscreve-se nos tópicos.
+	if err := consumer.SubscribeTopics(topics, nil); err != nil {
+		log.Fatalf("Failed to subscribe to topics: %v", err)
 	}
-	err = consumer.SubscribeTopics(c.Topics, nil)
-	if err != nil {
-		panic(err)
-	}
+
+	log.Printf("Kafka consumer started and subscribed to topics: %v", topics)
+
+	// Faz a leitura das mensagens em um loop.
 	for {
 		msg, err := consumer.ReadMessage(-1)
 		if err == nil {
-			msgChan <- msg
+			// Passa o valor da mensagem e o tópico para o manipulador.
+			handler.Handle(msg.Value, *msg.TopicPartition.Topic)
+		} else {
+			// O cliente tentará se recuperar de erros automaticamente.
+			log.Printf("Consumer error: %v (%v)\n", err, msg)
 		}
 	}
 }
