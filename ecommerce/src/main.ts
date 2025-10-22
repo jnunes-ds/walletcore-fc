@@ -31,7 +31,8 @@ async function ensureKafkaTopics(brokers: string[]) {
 		'user_created',
 		'product_registered',
 		'product_purchased',
-		'account_created', // <-- Tópico adicionado aqui
+		'account_created',
+		'transactions',
 	];
 
 	try {
@@ -91,4 +92,5 @@ async function bootstrap() {
 	}
 }
 
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 bootstrap();

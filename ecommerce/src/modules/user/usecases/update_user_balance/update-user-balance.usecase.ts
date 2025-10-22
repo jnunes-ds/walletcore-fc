@@ -7,7 +7,7 @@ import { DomainError, NotFoundError } from '@shared/errors/domain_errors';
 
 export interface IUpdateUserBalanceInputDTO {
 	userId: string;
-	balance: number;
+	amount: number; // Amount to increment (can be negative for decrement)
 }
 
 export type IUpdateUserBalanceOutputDTO = void;
@@ -36,15 +36,17 @@ export class UpdateUserBalanceUsecase
 		}
 
 		try {
-			await this.databaseService.user.update({
+			const updatedUser = await this.databaseService.user.update({
 				where: { id: input.userId },
 				data: {
-					balance: input.balance,
+					balance: {
+						increment: input.amount,
+					},
 				},
 			});
 
 			this.logger.log(
-				`Balance updated for user ${input.userId} to ${input.balance}`,
+				`Balance updated for user ${input.userId}. New balance: ${updatedUser.balance}`,
 			);
 
 			return success(undefined);

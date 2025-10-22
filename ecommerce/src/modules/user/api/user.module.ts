@@ -5,6 +5,7 @@ import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { AccountController } from '../controllers/account.controller';
 import { UpdateUserBalanceUsecase } from '../usecases/update_user_balance/update-user-balance.usecase';
+import { TransactionController } from '../controllers/transaction.controller';
 
 @Module({
 	imports: [
@@ -24,7 +25,7 @@ import { UpdateUserBalanceUsecase } from '../usecases/update_user_balance/update
 			},
 		]),
 	],
-	controllers: [UserController, AccountController],
+	controllers: [UserController, AccountController, TransactionController],
 	providers: [UserService, CreateUserUsecase, UpdateUserBalanceUsecase],
 })
 export class UserModule {}

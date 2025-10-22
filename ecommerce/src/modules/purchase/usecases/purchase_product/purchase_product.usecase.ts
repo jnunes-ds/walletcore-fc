@@ -87,10 +87,20 @@ export class PurchaseProductUsecase
 				},
 			});
 
-			this.kafkaClient.emit('product_purchased', createdPurchase).subscribe({
+			// Criar um payload DTO simples para o evento
+			const eventPayload = {
+				id: createdPurchase.id,
+				buyerId: createdPurchase.buyerId,
+				sellerId: createdPurchase.sellerId,
+				productId: createdPurchase.productId,
+				price: createdPurchase.price,
+				createdAt: createdPurchase.createdAt,
+			};
+
+			this.kafkaClient.emit('product_purchased', eventPayload).subscribe({
 				error: (err) => {
 					this.logger.error(
-						`Feiled to emit product_purchased evento for ${createdPurchase.id}`,
+						`Failed to emit product_purchased event for ${createdPurchase.id}`,
 						err.stack,
 					);
 				},
