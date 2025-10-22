@@ -4,17 +4,15 @@ import { EventPattern, Payload } from '@nestjs/microservices';
 import { PrismaService } from '@database/prisma.service';
 import { UpdateUserBalanceUsecase } from '../usecases/update_user_balance/update-user-balance.usecase';
 
-// Interface para o Payload da mensagem, conforme a estrutura do evento Kafka
 interface TransactionPayload {
 	id: string;
 	account_id_from: string;
 	account_id_to: string;
-	user_id_from: string; // ID do usuário que envia
-	user_id_to: string; // ID do usuário que recebe
-	amount: number; // Valor da transação
+	user_id_from: string;
+	user_id_to: string;
+	amount: number;
 }
 
-// Interface para a mensagem completa do Kafka
 interface KafkaMessage {
 	Name: string;
 	Payload: TransactionPayload;
@@ -25,8 +23,8 @@ export class TransactionController {
 	private readonly logger = new Logger(TransactionController.name);
 
 	constructor(
-		private readonly prismaService: PrismaService, // Para buscar os usuários
-		private readonly updateUserBalanceUsecase: UpdateUserBalanceUsecase, // Para atualizar os saldos
+		private readonly prismaService: PrismaService,
+		private readonly updateUserBalanceUsecase: UpdateUserBalanceUsecase,
 	) {}
 
 	@EventPattern('transactions')
@@ -37,7 +35,6 @@ export class TransactionController {
 
 		let message: KafkaMessage;
 		try {
-			// Garante que a mensagem seja um objeto, fazendo o parse se for uma string
 			message =
 				typeof rawMessage === 'string' ? JSON.parse(rawMessage) : rawMessage;
 		} catch (e) {
@@ -48,7 +45,6 @@ export class TransactionController {
 			return;
 		}
 
-		// Valida a estrutura básica da mensagem
 		if (!message || !message.Payload) {
 			this.logger.error('Invalid message structure: Payload is missing.', {
 				parsedMessage: message,
@@ -56,57 +52,58 @@ export class TransactionController {
 			return;
 		}
 
-		// Extrai os campos EXATAMENTE como instruído
-		const { user_id_from, user_id_to, amount } = message.Payload;
+		const { user_id_from, user_id_to, account_id_from, account_id_to, amount } =
+			message.Payload;
 
-		// Valida que os campos necessários existem e não são vazios.
-		// Se user_id_from ou user_id_to forem "", a transação é inválida.
-		if (!user_id_from || !user_id_to || !amount) {
+		// Lógica de Fallback: Prioriza user_id, mas usa account_id se o primeiro estiver vazio.
+		const fromId = user_id_from || account_id_from;
+		const toId = user_id_to || account_id_to;
+
+		if (!fromId || !toId || !amount) {
 			this.logger.error(
-				'Invalid transaction payload: required fields (user_id_from, user_id_to, amount) are missing or empty.',
+				'Invalid transaction payload: Could not determine sender or receiver ID, or amount is missing.',
 				message.Payload,
 			);
 			return;
 		}
 
 		this.logger.log(
-			`Processing transaction: ${amount} from user ${user_id_from} to user ${user_id_to}`,
+			`Processing transaction: ${amount} from user ${fromId} to user ${toId}`,
 		);
 
 		try {
-			// Passo 1 e 2: Buscar e sacar (withdraw) do usuário de origem
-			this.logger.log(
-				`Attempting to withdraw ${amount} from user ${user_id_from}`,
-			);
+			// 1. Efetua o saque (withdraw) do usuário de origem
+			this.logger.log(`Attempting to withdraw ${amount} from user ${fromId}`);
 			const withdrawResult = await this.updateUserBalanceUsecase.execute({
-				userId: user_id_from,
-				amount: -amount, // Usa um valor negativo para o saque
+				userId: fromId,
+				amount: amount,
+				type: 'decrement',
 			});
 
 			if (!withdrawResult.isSuccess) {
 				this.logger.error(
-					`Withdraw failed for user ${user_id_from}`,
+					`Withdraw failed for user ${fromId}`,
 					withdrawResult.error,
 				);
 			} else {
-				this.logger.log(`Withdraw successful for user ${user_id_from}`);
+				this.logger.log(`Withdraw successful for user ${fromId}`);
 			}
 
-			// Passo 3 e 4: Buscar e depositar para o usuário de destino
-			this.logger.log(`Attempting to deposit ${amount} to user ${user_id_to}`);
+			// 2. Efetua o depósito (deposit) para o usuário de destino
+			this.logger.log(`Attempting to deposit ${amount} to user ${toId}`);
 			const depositResult = await this.updateUserBalanceUsecase.execute({
-				userId: user_id_to,
-				amount: amount, // Usa um valor positivo para o depósito
+				userId: toId,
+				amount: amount,
+				type: 'increment',
 			});
 
 			if (!depositResult.isSuccess) {
 				this.logger.error(
-					`Deposit failed for user ${user_id_to}`,
+					`Deposit failed for user ${toId}`,
 					depositResult.error,
 				);
-				// OBS: Em um sistema real, seria crucial ter uma lógica para reverter o saque se o depósito falhar.
 			} else {
-				this.logger.log(`Deposit successful for user ${user_id_to}`);
+				this.logger.log(`Deposit successful for user ${toId}`);
 			}
 		} catch (error) {
 			this.logger.error(

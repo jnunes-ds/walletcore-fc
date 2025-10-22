@@ -28,7 +28,7 @@ func (a *AccountDB) FindById(id string) (*entity.Account, error) {
 
 	account.Client = &client
 
-	stmt, err := a.DB.Prepare("SELECT a.id, a.client_id, a.balance, a.created_at, c.id, c.name, c.email, c.created_at FROM accounts a INNER JOIN  clients c ON a.client_id = c.id WHERE a.id = ?")
+	stmt, err := a.DB.Prepare("SELECT a.id, a.client_id, a.balance, a.created_at, c.id, c.name, c.email, c.user_id, c.created_at FROM accounts a INNER JOIN  clients c ON a.client_id = c.id WHERE a.id = ?")
 	if err != nil {
 		return nil, err
 	}
@@ -42,6 +42,7 @@ func (a *AccountDB) FindById(id string) (*entity.Account, error) {
 		&client.ID,
 		&client.Name,
 		&client.Email,
+		&client.UserId,
 		&client.CreatedAt,
 	)
 	if err != nil {
@@ -55,7 +56,7 @@ func (a *AccountDB) FindByClientID(clientID string) (*entity.Account, error) {
 	var client entity.Client
 	account.Client = &client
 
-	stmt, err := a.DB.Prepare("SELECT a.id, a.client_id, a.balance, a.created_at, c.id, c.name, c.email, c.created_at FROM accounts a INNER JOIN clients c ON a.client_id = c.id WHERE a.client_id = ?")
+	stmt, err := a.DB.Prepare("SELECT a.id, a.client_id, a.balance, a.created_at, c.id, c.name, c.email, c.user_id, c.created_at FROM accounts a INNER JOIN clients c ON a.client_id = c.id WHERE a.client_id = ?")
 	if err != nil {
 		return nil, err
 	}
@@ -69,6 +70,7 @@ func (a *AccountDB) FindByClientID(clientID string) (*entity.Account, error) {
 		&client.ID,
 		&client.Name,
 		&client.Email,
+		&client.UserId,
 		&client.CreatedAt,
 	)
 	if err != nil {
