@@ -34,7 +34,7 @@ export class AccountController {
 
 		const result = await this.updateUserBalanceUsecase.execute({
 			userId: message.Payload.user_id,
-			balance: message.Payload.balance,
+			amount: message.Payload.balance, // Corrected from 'balance' to 'amount'
 		});
 
 		if (!result.isSuccess) {
