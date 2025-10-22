@@ -8,7 +8,7 @@ POST localhost:3001/purchase
 Content-Type: application/json
 
 {
-  "productId": "5f9d5b83-b7f5-4890-befb-2e2e9226a0dc",
-  "sellerId": "ea8b56af-7198-4521-8204-6c05c1dd8b52",
-  "buyerId": "c18a1fc2-2853-4cdd-b2d3-c87425e7b8fc"
+  "productId": "8be6bd88-9088-4594-8eb5-2040c4b28e10",
+  "sellerId": "3d970a5b-c89b-4b25-be1a-3c4441babfd6",
+  "buyerId": "3dccbeed-94a2-481f-9615-1f59d576140f"
 }

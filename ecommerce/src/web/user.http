@@ -3,8 +3,8 @@ POST http://localhost:3001/user
 Content-Type: application/json
 
 {
-  "name": "John Doe",
-  "email": "john.doe@example.com"
+  "name": "Joanna Doe",
+  "email": "joanna.doe@example.com"
 }
 
 ### GET Hello World
